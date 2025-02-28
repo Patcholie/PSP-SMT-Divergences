@@ -1,7 +1,5 @@
 //@version=6
 // @description Enhanced Precision Candles & SMT Divergence with improved reliability and customization
-indicator("Imbalances: Precision Candles & SMT Divergence - [Patchol]", shorttitle = "PSP & SMT", overlay=false, max_bars_back = 5000, max_lines_count = 500)
-
 // ╔══════════════════════════════════════════════════════════════════════════════╗
 // ║             PRECISION CANDLES & SMT DIVERGENCE INDICATOR                     ║
 // ║                                                                              ║
@@ -12,20 +10,31 @@ indicator("Imbalances: Precision Candles & SMT Divergence - [Patchol]", shorttit
 // ║  • PSP Detection: Medium reliability - depends on symbol correlation         ║
 // ║  • Divergence Detection: Medium reliability - use confirmation               ║
 // ║  • Multiple Fractal Periods: Use primary for signals, others for context     ║
+// ║  • Correlation Analysis: Valid only when above minimum threshold             ║
 // ║                                                                              ║
-// ║  IMPORTANT NOTES:                                                            ║
-// ║  • Choose a comparison symbol with meaningful correlation to your chart      ║
-// ║  • Adjust bar lookback settings based on your timeframe                      ║
-// ║  • Use divergence strength filters to reduce false signals                   ║
-// ║  • Consider divergence signals in context of overall trend                   ║
+// ║  IMPORTANT LIMITATIONS:                                                      ║
+// ║  • Heavily dependent on correlation between symbols                          ║
+// ║  • PSP detection uses simple opposite-direction logic without confirmations  ║
+// ║  • Fixed fractal periods may not adapt well to different market conditions   ║
+// ║  • Higher false signal rate in choppy or sideways markets                    ║
+// ║  • No adjustments for varying volatility environments                        ║
 // ║                                                                              ║
 // ║  BEST PRACTICES:                                                             ║
-// ║  • Lower timeframes: use shorter bar lookback settings                       ║
-// ║  • Higher timeframes: use longer bar lookback settings                       ║
-// ║  • Use divergence strength filtering in volatile markets                     ║
-// ║  • Verify PSP signals with additional confirmation                           ║
+// ║  • Choose comparison symbols with strong and stable correlations             ║
+// ║  • Use the strength filtering options to reduce false signals                ║
+// ║  • Apply on higher timeframes to reduce noise                                ║
+// ║  • Combine with additional confirmation signals before trading               ║
+// ║  • Consider PSP signals as areas of interest, not exact entry/exit points    ║
+// ║  • Monitor correlation value - signals unreliable when correlation is weak   ║
+// ║                                                                              ║
+// ║  OPTIMAL USAGE:                                                              ║
+// ║  • Most effective with highly correlated pairs (ES1/SPY, sector ETFs)        ║
+// ║  • Works best in trending markets with clear directional moves               ║
+// ║  • Lower settings for fractal periods in higher timeframes                   ║
+// ║  • Higher strength filter values in volatile markets                         ║
 // ║                                                                              ║
 // ╚══════════════════════════════════════════════════════════════════════════════╝
+
 
 // ==========================================
 // ===== ORGANIZED INPUT PARAMETERS ========

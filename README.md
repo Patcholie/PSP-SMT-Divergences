@@ -22,7 +22,7 @@
 
 The Precision Candles & SMT Divergence indicator is an advanced technical analysis tool designed to identify potential reversal and continuation points through two complementary methods:
 
-1. **PSP (Precision Swing Points)**: Detects when the main chart symbol and a comparison symbol move in opposite directions, indicating potential strength or weakness
+1. **PSP (Precision Swing Points)**: Detects when the main chart symbol and a comparison symbol move in opposite directions, with enhanced swing point filtering
 2. **SMT Divergence**: Identifies divergences between price action and technical indicators at multiple timeframe levels
 
 > **IMPORTANT**: This indicator is designed as an analytical tool to highlight potential trading opportunities. It should be used in conjunction with other confirmation tools and proper risk management practices.
@@ -33,8 +33,14 @@ The Precision Candles & SMT Divergence indicator is an advanced technical analys
 
 ### Precision Swing Points (PSP)
 - Highlights candles where your chart symbol moves opposite to a comparison symbol
+- Advanced swing point detection with customizable sensitivity
 - Color-coded bullish and bearish PSP identification
-- Customizable border highlighting for easy visual detection
+- Configurable border highlighting for easy visual detection
+
+### Enhanced Swing Point Filtering
+- Configurable swing point detection with customizable lookback and threshold
+- Option to display PSP signals only at significant market swing points
+- Adjustable sensitivity for swing point identification
 
 ### SMT Divergence Analysis
 - Multi-level fractal analysis (primary, secondary, tertiary)
@@ -65,12 +71,17 @@ The Precision Candles & SMT Divergence indicator is an advanced technical analys
 - For stocks, try sector ETFs or major index futures
 - For forex, try related currency pairs or economic indicators
 
-### 3. Select visualization options
+### 3. Configure Swing Point Detection
+- Enable "Only Show PSP at Swing Points" for more meaningful signals
+- Adjust "Swing Point Lookback" (recommended: 3)
+- Set "Minimum Swing Threshold" based on market volatility
+
+### 4. Select visualization options
 - Enable PSP highlighting for entry signals
 - Enable SMT divergence lines for trend continuation/reversal signals
 - Set the minimum correlation threshold (recommended: 0.5 or higher)
 
-### 4. How to read the indicator
+### 5. How to read the indicator
 - **Highlighted Candles**: Potential PSP entry signals
 - **Colored Lines**: Divergence patterns on multiple timeframes
 - **Correlation Display**: Shows statistical relationship between symbols
@@ -79,7 +90,45 @@ The Precision Candles & SMT Divergence indicator is an advanced technical analys
 
 ---
 
+## CONFIGURATION SETTINGS
+
+### Swing Point Filter Settings
+
+| Setting | Recommended | Description |
+|---------|-------------|-------------|
+| Only Show PSP at Swing Points | ✅ Enabled | Restrict PSP signals to significant market swing points |
+| Swing Point Lookback | 3 | Number of bars to analyze for determining swing points |
+| Minimum Swing Threshold (%) | 0.2-1.0 | Percentage difference required between swing point and surrounding candles |
+
+### Interpreting Swing Point Detection
+
+#### How Swing Point Detection Works
+- Identifies potential swing highs and lows based on price action
+- Compares candle heights within a configurable lookback period
+- Applies a minimum percentage threshold to confirm swing points
+- Helps reduce noise and focus on more meaningful market turning points
+
+### Best Practices for Swing Point Detection
+- Experiment with lookback and threshold settings to match your trading style
+- Lower threshold values will identify more swing points
+- Higher lookback values provide more conservative swing point detection
+- Consider market context and volatility when adjusting settings
+
+---
+
 ## VISUAL ELEMENTS EXPLAINED
+
+### Swing Point Filtered PSP Signals
+
+| Element | Description | Reliability |
+|---------|-------------|-------------|
+| **Green Border/Highlight** | Bullish PSP at Significant Swing Point | ⭐⭐⭐⭐ |
+| **Red Border/Highlight** | Bearish PSP at Significant Swing Point | ⭐⭐⭐⭐ |
+
+### Significance of Swing Point Filtering
+- Reduces false signals by focusing on meaningful market turning points
+- Provides a more refined approach to identifying potential entry/exit opportunities
+- Adapts to different market conditions through configurable parameters
 
 ### PSP Highlighting
 
@@ -419,6 +468,6 @@ A: For lower timeframes (1-15 min), use higher fractal periods (3-5). For higher
 
 ---
 
-*This manual is designed for Precision Candles & SMT Divergence Indicator v1.0.0*
+*This manual is designed for Precision Candles & SMT Divergence Indicator v1.1.0*
 
 *Last Updated: February 2025*

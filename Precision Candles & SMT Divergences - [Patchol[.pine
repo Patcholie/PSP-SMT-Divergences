@@ -1,0 +1,694 @@
+//@version=6
+// @description Enhanced Precision Candles & SMT Divergence with improved reliability and customization
+indicator("Imbalances: Precision Candles & SMT Divergence - [Patchol]", shorttitle = "PSP & SMT", overlay=false, max_bars_back = 5000, max_lines_count = 500)
+
+// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║             PRECISION CANDLES & SMT DIVERGENCE INDICATOR                     ║
+// ║                                                                              ║
+// ║  PURPOSE: Detects intermarket divergences and precision swing points for     ║
+// ║           improved trade entry timing and market analysis.                   ║
+// ║                                                                              ║
+// ║  RELIABILITY INFORMATION:                                                    ║
+// ║  • PSP Detection: Medium reliability - depends on symbol correlation         ║
+// ║  • Divergence Detection: Medium reliability - use confirmation               ║
+// ║  • Multiple Fractal Periods: Use primary for signals, others for context     ║
+// ║                                                                              ║
+// ║  IMPORTANT NOTES:                                                            ║
+// ║  • Choose a comparison symbol with meaningful correlation to your chart      ║
+// ║  • Adjust bar lookback settings based on your timeframe                      ║
+// ║  • Use divergence strength filters to reduce false signals                   ║
+// ║  • Consider divergence signals in context of overall trend                   ║
+// ║                                                                              ║
+// ║  BEST PRACTICES:                                                             ║
+// ║  • Lower timeframes: use shorter bar lookback settings                       ║
+// ║  • Higher timeframes: use longer bar lookback settings                       ║
+// ║  • Use divergence strength filtering in volatile markets                     ║
+// ║  • Verify PSP signals with additional confirmation                           ║
+// ║                                                                              ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
+
+// ==========================================
+// ===== ORGANIZED INPUT PARAMETERS ========
+// ==========================================
+
+// General Settings Group
+g_general = "General Settings"
+Sym = input.symbol('ES1!', 'Comparison Symbol', group=g_general)
+i_show_correlation = input.bool(true, "Show Symbol Correlation", tooltip="Display correlation between chart symbol and comparison symbol", group=g_general)
+i_correlation_length = input.int(20, "Correlation Length", minval=5, maxval=50, tooltip="Period for correlation calculation", group=g_general)
+i_min_correlation = input.float(0.5, "Minimum Correlation", minval=0, maxval=1, step=0.1, tooltip="Minimum correlation threshold for reliable signals", group=g_general)
+
+// Display Mode Group
+g_display = "Display Mode"
+i_mono_mode = input.bool(false, "Monochrome Mode", group=g_display)
+i_theme_brightness = input.float(0.0, "Brightness Adjustment", minval=-1.0, maxval=1.0, step=0.1, group=g_display)
+
+// Timeframe Adaptation Settings
+g_timeframe = "Timeframe Adaptation Settings"
+i_auto_adapt = input.bool(true, "Auto-Adapt to Timeframe", tooltip="Automatically adjust bar lookback based on chart timeframe", group=g_timeframe)
+i_lookback_multiplier = input.float(1.0, "Lookback Multiplier", minval=0.5, maxval=3.0, step=0.1, tooltip="Multiplier for auto-adaptation (higher = longer lookback)", group=g_timeframe)
+
+// Custom timeframe settings (used when auto-adapt is disabled)
+i_max_lookback = input.int(30, "Maximum Lookback Bars", minval=10, maxval=100, tooltip="Maximum number of bars to look back for divergence patterns", group=g_timeframe)
+i_max_gap = input.int(30, "Maximum Bar Gap", minval=5, maxval=100, tooltip="Maximum distance between pivot points for valid divergence", group=g_timeframe)
+
+// SMT Divergence Settings Group
+g_smt = "SMT Divergence Settings"
+g_smt_periods = "███ Fractal Periods"
+n = input.int(2, title="Primary", inline="primary_fractal", group=g_smt_periods)
+enablePrimaryFractal = input.bool(true, "Enable", inline="primary_fractal", group=g_smt_periods)
+
+n2 = input.int(3, title="Secondary", inline="secondary_fractal", group=g_smt_periods)
+enableSecondaryFractal = input.bool(false, "Enable", inline="secondary_fractal", group=g_smt_periods)
+
+n3 = input.int(4, title="Tertiary", inline="tertiary_fractal", group=g_smt_periods)
+enableTertiaryFractal = input.bool(false, "Enable", inline="tertiary_fractal", group=g_smt_periods)
+
+// Divergence Type Settings
+g_div_types = "███ Divergence Types"
+i_regular_div = input.bool(true, "Regular Divergence", inline="div_types", tooltip="Show regular (reversal) divergences", group=g_div_types)
+i_hidden_div = input.bool(false, "Hidden Divergence", inline="div_types", tooltip="Show hidden (continuation) divergences", group=g_div_types)
+
+// Divergence Filtering
+g_div_filter = "███ Divergence Filtering"
+i_min_strength = input.float(0.0, "Minimum Strength (%)", minval=0.0, maxval=10.0, step=0.1, tooltip="Minimum percentage difference for valid divergence (0 = no filter)", group=g_div_filter)
+i_use_volume_filter = input.bool(false, "Volume Confirmation", tooltip="Require increasing volume on pivot points", group=g_div_filter)
+
+// SMT Visibility Settings
+g_smt_visibility = "███ Visibility Controls"
+Bull_Line = input.bool(true, 'Show Bullish Lines', inline="bull_controls", group=g_smt_visibility)
+Bull_Label = input.bool(false, 'Show Bullish Labels', inline="bull_controls", group=g_smt_visibility)
+Bear_Line = input.bool(true, 'Show Bearish Lines', inline="bear_controls", group=g_smt_visibility)
+Bear_Label = input.bool(false, 'Show Bearish Labels', inline="bear_controls", group=g_smt_visibility)
+
+// Line Display Settings
+g_line_display = "███ Line Display Options"
+i_show_on_main = input.bool(true, "Show Lines on Main Chart", tooltip="Display divergence lines on the main price chart", group=g_line_display)
+i_show_on_indicator = input.bool(true, "Show Lines on Indicator", tooltip="Display divergence lines on this indicator panel", group=g_line_display)
+
+// SMT Color Settings
+g_smt_colors = "███ Divergence Colors"
+// Primary divergence colors
+i_primary_bull_color = input.color(#00FF00, "Primary Bullish", inline="primary_colors", group=g_smt_colors)
+i_primary_bear_color = input.color(#FF0000, "Primary Bearish", inline="primary_colors", group=g_smt_colors)
+
+// Secondary divergence colors
+i_secondary_bull_color = input.color(#0000FF, "Secondary Bullish", inline="secondary_colors", group=g_smt_colors)
+i_secondary_bear_color = input.color(#0000FF, "Secondary Bearish", inline="secondary_colors", group=g_smt_colors)
+
+// Tertiary divergence colors
+i_tertiary_bull_color = input.color(#800080, "Tertiary Bullish", inline="tertiary_colors", group=g_smt_colors)
+i_tertiary_bear_color = input.color(#800080, "Tertiary Bearish", inline="tertiary_colors", group=g_smt_colors)
+
+// Line Style Settings
+g_line_style = "███ Line Style"
+i_line_width = input.int(1, "Line Width", minval=1, maxval=4, inline="line_style", group=g_line_style)
+i_line_style = input.string("Dashed", "Line Style", options=["Solid", "Dotted", "Dashed"], inline="line_style", group=g_line_style)
+i_remove_old_lines = input.bool(true, "Remove Old Lines", tooltip="Automatically remove old divergence lines to improve performance", group=g_line_style)
+i_max_lines = input.int(10, "Maximum Lines", minval=5, maxval=50, tooltip="Maximum number of divergence lines to display (oldest are removed first)", group=g_line_style)
+
+// PSP Settings Group
+g_psp = "PSP (Precision Swing Point) Settings"
+g_psp_highlight = "███ Highlight Settings"
+enableMarkGreen = input.bool(true, "Highlight Bullish PSP", inline="psp_enable", group=g_psp_highlight)
+enableMarkRed = input.bool(true, "Highlight Bearish PSP", inline="psp_enable", group=g_psp_highlight)
+
+markGreenColor = input.color(color.new(color.green, 0), "Bullish Color", inline="psp_colors", group=g_psp_highlight)
+markRedColor = input.color(color.new(color.red, 0), "Bearish Color", inline="psp_colors", group=g_psp_highlight)
+
+// PSP Border Settings
+g_psp_border = "███ Border Settings"
+i_enable_psp_borders = input.bool(true, "Show PSP Borders", inline="psp_border", group=g_psp_border)
+pspBorderColorBullish = input.color(color.green, "Bullish Border", inline="psp_border_colors", group=g_psp_border)
+pspBorderColorBearish = input.color(color.red, "Bearish Border", inline="psp_border_colors", group=g_psp_border)
+
+// Comparison Symbol Settings Group
+g_comp = "Comparison Symbol Settings"
+g_comp_candles = "███ Candle Display"
+enableCompSymbolCandles = input.bool(true, "Show Comparison Candles", inline="comp_enable", group=g_comp_candles)
+i_comp_opacity = input.int(100, "Opacity (%)", minval=0, maxval=100, inline="comp_enable", group=g_comp_candles)
+
+// Candle Colors
+g_comp_colors = "███ Candle Colors"
+compSymbolBullishColor = input.color(#089981, "Bullish Body", inline="comp_bull_colors", group=g_comp_colors)
+compSymbolBullishWickColor = input.color(#089981, "Bullish Wick", inline="comp_bull_colors", group=g_comp_colors)
+
+compSymbolBearishColor = input.color(#f23645, "Bearish Body", inline="comp_bear_colors", group=g_comp_colors)
+compSymbolBearishWickColor = input.color(#f23645, "Bearish Wick", inline="comp_bear_colors", group=g_comp_colors)
+
+// Monochrome Mode Settings
+g_mono = "Monochrome Mode Settings"
+i_mono_bull_brightness = input.int(80, "Bullish Brightness", minval=0, maxval=100, inline="mono_brightness", group=g_mono)
+i_mono_bear_brightness = input.int(20, "Bearish Brightness", minval=0, maxval=100, inline="mono_brightness", group=g_mono)
+
+// ==========================================
+// ===== HELPER FUNCTIONS =================
+// ==========================================
+
+// Calculate timeframe-specific bar lookback values
+calcTimeframeAdaptiveValues() =>
+    // Base multiplier for different timeframes
+    float tfMultiplier = 1.0
+    
+    // Adjust multiplier based on timeframe
+    if timeframe.isintraday
+        if timeframe.in_seconds() <= 60 // 1-minute
+            tfMultiplier := 0.5
+        else if timeframe.in_seconds() <= 300 // 5-minute
+            tfMultiplier := 0.75
+        else if timeframe.in_seconds() <= 900 // 15-minute
+            tfMultiplier := 1.0
+        else if timeframe.in_seconds() <= 3600 // 1-hour
+            tfMultiplier := 1.5
+        else
+            tfMultiplier := 2.0
+    else if timeframe.isdaily
+        tfMultiplier := 2.5
+    else if timeframe.isweekly
+        tfMultiplier := 3.0
+    else if timeframe.ismonthly
+        tfMultiplier := 4.0
+    
+    // Apply user's lookback multiplier
+    tfMultiplier := tfMultiplier * i_lookback_multiplier
+    
+    // Calculate lookback and gap values
+    int lookbackBars = math.round(30 * tfMultiplier)
+    int maxGapBars = math.round(30 * tfMultiplier)
+    
+    [lookbackBars, maxGapBars]
+
+// Get the lookback and gap values based on settings
+[adaptiveLookback, adaptiveGap] = calcTimeframeAdaptiveValues()
+int lookbackBars = i_auto_adapt ? adaptiveLookback : i_max_lookback
+int maxGapBars = i_auto_adapt ? adaptiveGap : i_max_gap
+
+// Function to convert color to monochrome based on brightness
+getMonochromeColor(originalColor, brightness) =>
+    if i_mono_mode
+        monoValue = math.round(255 * brightness / 100)
+        color.rgb(monoValue, monoValue, monoValue)
+    else
+        originalColor
+
+// Function to get line style based on settings
+getLineStyle() =>
+    if i_line_style == "Solid"
+        line.style_solid
+    else if i_line_style == "Dotted"
+        line.style_dotted
+    else
+        line.style_dashed
+
+// Determine divergence colors based on mode and settings
+getBullishDivergenceColor(level) =>
+    if level == 1
+        getMonochromeColor(i_primary_bull_color, i_mono_bull_brightness)
+    else if level == 2
+        getMonochromeColor(i_secondary_bull_color, i_mono_bull_brightness)
+    else
+        getMonochromeColor(i_tertiary_bull_color, i_mono_bull_brightness)
+
+getBearishDivergenceColor(level) =>
+    if level == 1
+        getMonochromeColor(i_primary_bear_color, i_mono_bear_brightness)
+    else if level == 2
+        getMonochromeColor(i_secondary_bear_color, i_mono_bear_brightness)
+    else
+        getMonochromeColor(i_tertiary_bear_color, i_mono_bear_brightness)
+
+// Calculate divergence strength
+calculateDivergenceStrength(price1, price2, indicator1, indicator2) =>
+    priceDiff = math.abs(price1 - price2) / math.max(price1, price2) * 100
+    indicatorDiff = math.abs(indicator1 - indicator2) / math.max(math.abs(indicator1), math.abs(indicator2)) * 100
+    
+    // Return the combined strength
+    (priceDiff + indicatorDiff) / 2
+
+// Check if divergence meets minimum strength requirement
+isDivergenceStrong(price1, price2, indicator1, indicator2) =>
+    if i_min_strength <= 0
+        true
+    else
+        strength = calculateDivergenceStrength(price1, price2, indicator1, indicator2)
+        strength >= i_min_strength
+
+// ==========================================
+// ===== MAIN LOGIC CODE =================
+// ==========================================
+
+// Current chart timeframe
+currentChartTimeframe = timeframe.period
+
+// Retrieve data for the current chart's symbol and comparison symbol 
+// Using gaps=barmerge.gaps_off to prevent repainting
+chartSymbolClose = close
+chartSymbolOpen = open
+chartSymbolVolume = volume
+
+compSymbolClose = request.security(Sym, currentChartTimeframe, close, gaps=barmerge.gaps_off)
+compSymbolOpen = request.security(Sym, currentChartTimeframe, open, gaps=barmerge.gaps_off)
+compSymbolHigh = request.security(Sym, currentChartTimeframe, high, gaps=barmerge.gaps_off)
+compSymbolLow = request.security(Sym, currentChartTimeframe, low, gaps=barmerge.gaps_off)
+compSymbolVolume = request.security(Sym, currentChartTimeframe, volume, gaps=barmerge.gaps_off)
+
+// Calculate correlation between the chart symbol and comparison symbol
+correlation = ta.correlation(close, compSymbolClose, i_correlation_length)
+isCorrelationValid = correlation >= i_min_correlation or correlation <= -i_min_correlation
+
+// PSP Conditions
+isGreenChartSymbol = chartSymbolClose > chartSymbolOpen
+isRedChartSymbol = chartSymbolClose < chartSymbolOpen
+isGreenCompSymbol = compSymbolClose > compSymbolOpen
+isRedCompSymbol = compSymbolClose < compSymbolOpen
+
+// Condition for green and red markings
+markGreen = enableMarkGreen and isRedCompSymbol and isGreenChartSymbol
+markRed = enableMarkRed and isGreenCompSymbol and isRedChartSymbol
+
+// Apply monochrome colors if needed
+pspBullishBorderColor = getMonochromeColor(pspBorderColorBullish, i_mono_bull_brightness)
+pspBearishBorderColor = getMonochromeColor(pspBorderColorBearish, i_mono_bear_brightness)
+
+// SMT Divergence Fractals
+[Open, High, Low, Close] = request.security(Sym, timeframe.period, [open, high, low, close], gaps=barmerge.gaps_off)
+Volume = request.security(Sym, timeframe.period, volume, gaps=barmerge.gaps_off)
+
+// Primary Fractal
+UpPivot = bool(ta.pivothigh(n,n)) and enablePrimaryFractal
+DownPivot = bool(ta.pivotlow(n,n)) and enablePrimaryFractal
+
+// Secondary Fractal
+UpPivot2 = enableSecondaryFractal ? bool(ta.pivothigh(n2,n2)) : false
+DownPivot2 = enableSecondaryFractal ? bool(ta.pivotlow(n2,n2)) : false
+
+// Tertiary Fractal
+UpPivot3 = enableTertiaryFractal ? bool(ta.pivothigh(n3,n3)) : false
+DownPivot3 = enableTertiaryFractal ? bool(ta.pivotlow(n3,n3)) : false
+
+// ==========================================
+// == BEARISH DIVERGENCE DETECTION =========
+// ==========================================
+
+// Bearish Divergence Data - Primary
+High_Last_Price = ta.valuewhen(UpPivot, high[n], 0)
+High_Per_Price = ta.valuewhen(UpPivot, high[n], 1)
+High_Last_Hist = ta.valuewhen(UpPivot, High[n], 0)
+High_Per_Hist = ta.valuewhen(UpPivot, High[n], 1)
+High_Last_Bar = ta.valuewhen(UpPivot, bar_index[n], 0)
+High_Per_Bar = ta.valuewhen(UpPivot, bar_index[n], 1)
+High_Last_Vol = ta.valuewhen(UpPivot, Volume[n], 0) 
+High_Per_Vol = ta.valuewhen(UpPivot, Volume[n], 1)
+Time_Condition_Bear = (High_Last_Bar + lookbackBars) > bar_index
+
+// Bearish Divergence Data - Secondary
+High_Last_Price2 = enableSecondaryFractal ? ta.valuewhen(UpPivot2, high[n2], 0) : na
+High_Per_Price2 = enableSecondaryFractal ? ta.valuewhen(UpPivot2, high[n2], 1) : na
+High_Last_Hist2 = enableSecondaryFractal ? ta.valuewhen(UpPivot2, High[n2], 0) : na
+High_Per_Hist2 = enableSecondaryFractal ? ta.valuewhen(UpPivot2, High[n2], 1) : na
+High_Last_Bar2 = enableSecondaryFractal ? ta.valuewhen(UpPivot2, bar_index[n2], 0) : na
+High_Per_Bar2 = enableSecondaryFractal ? ta.valuewhen(UpPivot2, bar_index[n2], 1) : na
+High_Last_Vol2 = enableSecondaryFractal ? ta.valuewhen(UpPivot2, Volume[n2], 0) : na
+High_Per_Vol2 = enableSecondaryFractal ? ta.valuewhen(UpPivot2, Volume[n2], 1) : na
+Time_Condition_Bear2 = enableSecondaryFractal ? (High_Last_Bar2 + lookbackBars) > bar_index : false
+
+// Bearish Divergence Data - Tertiary
+High_Last_Price3 = enableTertiaryFractal ? ta.valuewhen(UpPivot3, high[n3], 0) : na
+High_Per_Price3 = enableTertiaryFractal ? ta.valuewhen(UpPivot3, high[n3], 1) : na
+High_Last_Hist3 = enableTertiaryFractal ? ta.valuewhen(UpPivot3, High[n3], 0) : na
+High_Per_Hist3 = enableTertiaryFractal ? ta.valuewhen(UpPivot3, High[n3], 1) : na
+High_Last_Bar3 = enableTertiaryFractal ? ta.valuewhen(UpPivot3, bar_index[n3], 0) : na
+High_Per_Bar3 = enableTertiaryFractal ? ta.valuewhen(UpPivot3, bar_index[n3], 1) : na
+High_Last_Vol3 = enableTertiaryFractal ? ta.valuewhen(UpPivot3, Volume[n3], 0) : na
+High_Per_Vol3 = enableTertiaryFractal ? ta.valuewhen(UpPivot3, Volume[n3], 1) : na
+Time_Condition_Bear3 = enableTertiaryFractal ? (High_Last_Bar3 + lookbackBars) > bar_index : false
+
+// Improved Bearish Divergence Detector - Primary
+Last_Bearish_Divergece = if High_Last_Hist > 0 and High_Per_Hist > 0 and Time_Condition_Bear and (High_Last_Bar - High_Per_Bar) < maxGapBars
+    // Check volume condition if enabled
+    volumeCheck = i_use_volume_filter ? High_Last_Vol > High_Per_Vol : true
+    
+    // Regular bearish divergence (price higher, indicator lower)
+    regularDiv = i_regular_div and High_Last_Price > High_Per_Price and High_Last_Hist < High_Per_Hist and volumeCheck
+    
+    // Hidden bearish divergence (price lower, indicator higher)
+    hiddenDiv = i_hidden_div and High_Last_Price < High_Per_Price and High_Last_Hist > High_Per_Hist and volumeCheck
+    
+    // Check strength
+    isStrong = isDivergenceStrong(High_Last_Price, High_Per_Price, High_Last_Hist, High_Per_Hist)
+    
+    (regularDiv or hiddenDiv) and isStrong
+else 
+    false
+
+// Improved Bearish Divergence Detector - Secondary
+Last_Bearish_Divergece2 = if enableSecondaryFractal and High_Last_Hist2 > 0 and High_Per_Hist2 > 0 and Time_Condition_Bear2 and (High_Last_Bar2 - High_Per_Bar2) < maxGapBars
+    // Check volume condition if enabled
+    volumeCheck = i_use_volume_filter ? High_Last_Vol2 > High_Per_Vol2 : true
+    
+    // Regular bearish divergence (price higher, indicator lower)
+    regularDiv = i_regular_div and High_Last_Price2 > High_Per_Price2 and High_Last_Hist2 < High_Per_Hist2 and volumeCheck
+    
+    // Hidden bearish divergence (price lower, indicator higher)
+    hiddenDiv = i_hidden_div and High_Last_Price2 < High_Per_Price2 and High_Last_Hist2 > High_Per_Hist2 and volumeCheck
+    
+    // Check strength
+    isStrong = isDivergenceStrong(High_Last_Price2, High_Per_Price2, High_Last_Hist2, High_Per_Hist2)
+    
+    (regularDiv or hiddenDiv) and isStrong
+else
+    false
+
+// Improved Bearish Divergence Detector - Tertiary
+Last_Bearish_Divergece3 = if enableTertiaryFractal and High_Last_Hist3 > 0 and High_Per_Hist3 > 0 and Time_Condition_Bear3 and (High_Last_Bar3 - High_Per_Bar3) < maxGapBars
+    // Check volume condition if enabled
+    volumeCheck = i_use_volume_filter ? High_Last_Vol3 > High_Per_Vol3 : true
+    
+    // Regular bearish divergence (price higher, indicator lower)
+    regularDiv = i_regular_div and High_Last_Price3 > High_Per_Price3 and High_Last_Hist3 < High_Per_Hist3 and volumeCheck
+    
+    // Hidden bearish divergence (price lower, indicator higher)
+    hiddenDiv = i_hidden_div and High_Last_Price3 < High_Per_Price3 and High_Last_Hist3 > High_Per_Hist3 and volumeCheck
+    
+    // Check strength
+    isStrong = isDivergenceStrong(High_Last_Price3, High_Per_Price3, High_Last_Hist3, High_Per_Hist3)
+    
+    (regularDiv or hiddenDiv) and isStrong
+else
+    false
+
+// ==========================================
+// == BULLISH DIVERGENCE DETECTION =========
+// ==========================================
+
+// Bullish Divergence Data - Primary
+Low_Last_Price = ta.valuewhen(DownPivot, low[n], 0)
+Low_Per_Price = ta.valuewhen(DownPivot, low[n], 1)
+Low_Last_Hist = ta.valuewhen(DownPivot, Low[n], 0)
+Low_Per_Hist = ta.valuewhen(DownPivot, Low[n], 1)
+Low_Last_Bar = ta.valuewhen(DownPivot, bar_index[n], 0)
+Low_Per_Bar = ta.valuewhen(DownPivot, bar_index[n], 1)
+Low_Last_Vol = ta.valuewhen(DownPivot, Volume[n], 0)
+Low_Per_Vol = ta.valuewhen(DownPivot, Volume[n], 1)
+Time_Condition_Bull = (Low_Last_Bar + lookbackBars) > bar_index 
+
+// Bullish Divergence Data - Secondary
+Low_Last_Price2 = enableSecondaryFractal ? ta.valuewhen(DownPivot2, low[n2], 0) : na
+Low_Per_Price2 = enableSecondaryFractal ? ta.valuewhen(DownPivot2, low[n2], 1) : na
+Low_Last_Hist2 = enableSecondaryFractal ? ta.valuewhen(DownPivot2, Low[n2], 0) : na
+Low_Per_Hist2 = enableSecondaryFractal ? ta.valuewhen(DownPivot2, Low[n2], 1) : na
+Low_Last_Bar2 = enableSecondaryFractal ? ta.valuewhen(DownPivot2, bar_index[n2], 0) : na
+Low_Per_Bar2 = enableSecondaryFractal ? ta.valuewhen(DownPivot2, bar_index[n2], 1) : na
+Low_Last_Vol2 = enableSecondaryFractal ? ta.valuewhen(DownPivot2, Volume[n2], 0) : na
+Low_Per_Vol2 = enableSecondaryFractal ? ta.valuewhen(DownPivot2, Volume[n2], 1) : na
+Time_Condition_Bull2 = enableSecondaryFractal ? (Low_Last_Bar2 + lookbackBars) > bar_index : false
+
+// Bullish Divergence Data - Tertiary
+Low_Last_Price3 = enableTertiaryFractal ? ta.valuewhen(DownPivot3, low[n3], 0) : na
+Low_Per_Price3 = enableTertiaryFractal ? ta.valuewhen(DownPivot3, low[n3], 1) : na
+Low_Last_Hist3 = enableTertiaryFractal ? ta.valuewhen(DownPivot3, Low[n3], 0) : na
+Low_Per_Hist3 = enableTertiaryFractal ? ta.valuewhen(DownPivot3, Low[n3], 1) : na
+Low_Last_Bar3 = enableTertiaryFractal ? ta.valuewhen(DownPivot3, bar_index[n3], 0) : na
+Low_Per_Bar3 = enableTertiaryFractal ? ta.valuewhen(DownPivot3, bar_index[n3], 1) : na
+Low_Last_Vol3 = enableTertiaryFractal ? ta.valuewhen(DownPivot3, Volume[n3], 0) : na
+Low_Per_Vol3 = enableTertiaryFractal ? ta.valuewhen(DownPivot3, Volume[n3], 1) : na
+Time_Condition_Bull3 = enableTertiaryFractal ? (Low_Last_Bar3 + lookbackBars) > bar_index : false
+
+// Improved Bullish Divergence Detector - Primary
+Last_Bullish_Divergece = if Low_Last_Hist > 0 and Low_Per_Hist > 0 and Time_Condition_Bull and (Low_Last_Bar - Low_Per_Bar) < maxGapBars
+    // Check volume condition if enabled
+    volumeCheck = i_use_volume_filter ? Low_Last_Vol > Low_Per_Vol : true
+    
+    // Regular bullish divergence (price lower, indicator higher)
+    regularDiv = i_regular_div and Low_Last_Price < Low_Per_Price and Low_Last_Hist > Low_Per_Hist and volumeCheck
+    
+    // Hidden bullish divergence (price higher, indicator lower)
+    hiddenDiv = i_hidden_div and Low_Last_Price > Low_Per_Price and Low_Last_Hist < Low_Per_Hist and volumeCheck
+    
+    // Check strength
+    isStrong = isDivergenceStrong(Low_Last_Price, Low_Per_Price, Low_Last_Hist, Low_Per_Hist)
+    
+    (regularDiv or hiddenDiv) and isStrong
+else 
+    false
+
+// Improved Bullish Divergence Detector - Secondary
+Last_Bullish_Divergece2 = if enableSecondaryFractal and Low_Last_Hist2 > 0 and Low_Per_Hist2 > 0 and Time_Condition_Bull2 and (Low_Last_Bar2 - Low_Per_Bar2) < maxGapBars
+    // Check volume condition if enabled
+    volumeCheck = i_use_volume_filter ? Low_Last_Vol2 > Low_Per_Vol2 : true
+    
+    // Regular bullish divergence (price lower, indicator higher)
+    regularDiv = i_regular_div and Low_Last_Price2 < Low_Per_Price2 and Low_Last_Hist2 > Low_Per_Hist2 and volumeCheck
+    
+    // Hidden bullish divergence (price higher, indicator lower)
+    hiddenDiv = i_hidden_div and Low_Last_Price2 > Low_Per_Price2 and Low_Last_Hist2 < Low_Per_Hist2 and volumeCheck
+    
+    // Check strength
+    isStrong = isDivergenceStrong(Low_Last_Price2, Low_Per_Price2, Low_Last_Hist2, Low_Per_Hist2)
+    
+    (regularDiv or hiddenDiv) and isStrong
+else
+    false
+
+// Improved Bullish Divergence Detector - Tertiary
+Last_Bullish_Divergece3 = if enableTertiaryFractal and Low_Last_Hist3 > 0 and Low_Per_Hist3 > 0 and Time_Condition_Bull3 and (Low_Last_Bar3 - Low_Per_Bar3) < maxGapBars
+    // Check volume condition if enabled
+    volumeCheck = i_use_volume_filter ? Low_Last_Vol3 > Low_Per_Vol3 : true
+    
+    // Regular bullish divergence (price lower, indicator higher)
+    regularDiv = i_regular_div and Low_Last_Price3 < Low_Per_Price3 and Low_Last_Hist3 > Low_Per_Hist3 and volumeCheck
+    
+    // Hidden bullish divergence (price higher, indicator lower)
+    hiddenDiv = i_hidden_div and Low_Last_Price3 > Low_Per_Price3 and Low_Last_Hist3 < Low_Per_Hist3 and volumeCheck
+    
+    // Check strength
+    isStrong = isDivergenceStrong(Low_Last_Price3, Low_Per_Price3, Low_Last_Hist3, Low_Per_Hist3)
+    
+    (regularDiv or hiddenDiv) and isStrong
+else
+    false
+
+// ==========================================
+// === VISUAL COMPONENTS ===================
+// ==========================================
+
+// Determine Comparison Symbol Candle Border Color
+compSymbolBorderColor() =>
+    // Check if PSP conditions are met for the current bar
+    isPSPGreen = isRedCompSymbol and isGreenChartSymbol
+    isPSPRed = isGreenCompSymbol and isRedChartSymbol
+    
+    if enableCompSymbolCandles and i_enable_psp_borders
+        if isPSPGreen
+            // In monochrome mode, use contrasting border (opposite brightness)
+            if i_mono_mode
+                // For bullish PSP, use darker border on lighter candle
+                getMonochromeColor(color.white, math.max(10, i_mono_bull_brightness - 50))
+            else
+                pspBullishBorderColor
+        else if isPSPRed
+            // In monochrome mode, use contrasting border (opposite brightness)
+            if i_mono_mode
+                // For bearish PSP, use lighter border on darker candle
+                getMonochromeColor(color.white, math.min(90, i_mono_bear_brightness + 50))
+            else
+                pspBearishBorderColor
+        else
+            i_mono_mode ? Close >= Open ? getMonochromeColor(compSymbolBullishColor, i_mono_bull_brightness) : getMonochromeColor(compSymbolBearishColor, i_mono_bear_brightness) : Close >= Open ? compSymbolBullishColor : compSymbolBearishColor
+    else
+        na
+
+// Main Chart Border Color
+mainChartBorderColor() =>
+    if markGreen
+        // In monochrome mode, use contrasting border for main chart PSP candles
+        if i_mono_mode
+            // For bullish PSP, use darker border on lighter candle
+            getMonochromeColor(color.white, math.max(10, i_mono_bull_brightness - 50))
+        else
+            pspBullishBorderColor
+    else if markRed
+        // In monochrome mode, use contrasting border for main chart PSP candles
+        if i_mono_mode
+            // For bearish PSP, use lighter border on darker candle
+            getMonochromeColor(color.white, math.min(90, i_mono_bear_brightness + 50))
+        else
+            pspBearishBorderColor
+    else
+        na
+
+// Line arrays for managing divergence lines
+var line[] bullishLines = array.new_line()
+var line[] bearishLines = array.new_line()
+var line[] bullishIndicatorLines = array.new_line()
+var line[] bearishIndicatorLines = array.new_line()
+
+// Function to manage line arrays
+manageLinesArray(line[] arr) =>
+    if i_remove_old_lines and array.size(arr) > i_max_lines
+        linesToRemove = array.size(arr) - i_max_lines
+        for i = 0 to linesToRemove - 1
+            oldLine = array.shift(arr)
+            line.delete(oldLine)
+
+// Enhanced Divergence Drawing Function
+Drawing(Bull_Line, Bear_Line, Bull_Label, Bear_Label)=>
+    // Line style from settings
+    lineStyle = getLineStyle()
+
+    // Only process if correlation is valid
+    if isCorrelationValid
+        // Primary Fractal Drawing
+        if Last_Bullish_Divergece and Bull_Line
+            primaryBullColor = getBullishDivergenceColor(1)
+            
+            // Price chart line on main chart
+            if i_show_on_main
+                priceLine = line.new(Low_Per_Bar, low[bar_index - Low_Per_Bar], Low_Last_Bar, low[bar_index - Low_Last_Bar], color=primaryBullColor, width=i_line_width, style=lineStyle, force_overlay=true)
+                array.push(bullishLines, priceLine)
+            
+            // Indicator line on indicator panel
+            if i_show_on_indicator
+                indicatorLine = line.new(Low_Per_Bar, Low_Per_Hist, Low_Last_Bar, Low_Last_Hist, color=primaryBullColor, width=i_line_width, style=lineStyle)
+                array.push(bullishIndicatorLines, indicatorLine)
+            
+            // Add label if enabled
+            if Bull_Label
+                label.new(Low_Last_Bar, Low_Last_Hist, "BullDiv\nRegular", color=color.new(primaryBullColor, 50), textcolor=primaryBullColor, style=label.style_label_down, size=size.small)
+            
+            // Manage lines array
+            manageLinesArray(bullishLines)
+            manageLinesArray(bullishIndicatorLines)
+      
+        if Last_Bearish_Divergece and Bear_Line
+            primaryBearColor = getBearishDivergenceColor(1)
+            
+            // Price chart line on main chart
+            if i_show_on_main
+                priceLine = line.new(High_Per_Bar, high[bar_index - High_Per_Bar], High_Last_Bar, high[bar_index - High_Last_Bar], color=primaryBearColor, width=i_line_width, style=lineStyle, force_overlay=true)
+                array.push(bearishLines, priceLine)
+            
+            // Indicator line on indicator panel
+            if i_show_on_indicator
+                indicatorLine = line.new(High_Per_Bar, High_Per_Hist, High_Last_Bar, High_Last_Hist, color=primaryBearColor, width=i_line_width, style=lineStyle)
+                array.push(bearishIndicatorLines, indicatorLine)
+            
+            // Add label if enabled
+            if Bear_Label
+                label.new(High_Last_Bar, High_Last_Hist, "BearDiv\nRegular", color=color.new(primaryBearColor, 50), textcolor=primaryBearColor, style=label.style_label_up, size=size.small)
+            
+            // Manage lines array
+            manageLinesArray(bearishLines)
+            manageLinesArray(bearishIndicatorLines)
+    
+        // Secondary Fractal Drawing
+        if Last_Bullish_Divergece2 and Bull_Line
+            secondaryBullColor = getBullishDivergenceColor(2)
+            
+            // Price chart line on main chart
+            if i_show_on_main
+                priceLine = line.new(Low_Per_Bar2, low[bar_index - Low_Per_Bar2], Low_Last_Bar2, low[bar_index - Low_Last_Bar2], color=secondaryBullColor, width=i_line_width, style=lineStyle, force_overlay=true)
+                array.push(bullishLines, priceLine)
+            
+            // Indicator line on indicator panel
+            if i_show_on_indicator
+                indicatorLine = line.new(Low_Per_Bar2, Low_Per_Hist2, Low_Last_Bar2, Low_Last_Hist2, color=secondaryBullColor, width=i_line_width, style=lineStyle)
+                array.push(bullishIndicatorLines, indicatorLine)
+            
+            // Add label if enabled
+            if Bull_Label
+                label.new(Low_Last_Bar2, Low_Last_Hist2, "BullDiv\nSecondary", color=color.new(secondaryBullColor, 50), textcolor=secondaryBullColor, style=label.style_label_down, size=size.small)
+            
+            // Manage lines array
+            manageLinesArray(bullishLines)
+            manageLinesArray(bullishIndicatorLines)
+      
+        if Last_Bearish_Divergece2 and Bear_Line
+            secondaryBearColor = getBearishDivergenceColor(2)
+            
+            // Price chart line on main chart
+            if i_show_on_main
+                priceLine = line.new(High_Per_Bar2, high[bar_index - High_Per_Bar2], High_Last_Bar2, high[bar_index - High_Last_Bar2], color=secondaryBearColor, width=i_line_width, style=lineStyle, force_overlay=true)
+                array.push(bearishLines, priceLine)
+            
+            // Indicator line on indicator panel
+            if i_show_on_indicator
+                indicatorLine = line.new(High_Per_Bar2, High_Per_Hist2, High_Last_Bar2, High_Last_Hist2, color=secondaryBearColor, width=i_line_width, style=lineStyle)
+                array.push(bearishIndicatorLines, indicatorLine)
+            
+            // Add label if enabled
+            if Bear_Label
+                label.new(High_Last_Bar2, High_Last_Hist2, "BearDiv\nSecondary", color=color.new(secondaryBearColor, 50), textcolor=secondaryBearColor, style=label.style_label_up, size=size.small)
+            
+            // Manage lines array
+            manageLinesArray(bearishLines)
+            manageLinesArray(bearishIndicatorLines)
+    
+        // Tertiary Fractal Drawing
+        if Last_Bullish_Divergece3 and Bull_Line
+            tertiaryBullColor = getBullishDivergenceColor(3)
+            
+            // Price chart line on main chart
+            if i_show_on_main
+                priceLine = line.new(Low_Per_Bar3, low[bar_index - Low_Per_Bar3], Low_Last_Bar3, low[bar_index - Low_Last_Bar3], color=tertiaryBullColor, width=i_line_width, style=lineStyle, force_overlay=true)
+                array.push(bullishLines, priceLine)
+            
+            // Indicator line on indicator panel
+            if i_show_on_indicator
+                indicatorLine = line.new(Low_Per_Bar3, Low_Per_Hist3, Low_Last_Bar3, Low_Last_Hist3, color=tertiaryBullColor, width=i_line_width, style=lineStyle)
+                array.push(bullishIndicatorLines, indicatorLine)
+            
+            // Add label if enabled
+            if Bull_Label
+                label.new(Low_Last_Bar3, Low_Last_Hist3, "BullDiv\nTertiary", color=color.new(tertiaryBullColor, 50), textcolor=tertiaryBullColor, style=label.style_label_down, size=size.small)
+            
+            // Manage lines array
+            manageLinesArray(bullishLines)
+            manageLinesArray(bullishIndicatorLines)
+      
+        if Last_Bearish_Divergece3 and Bear_Line
+            tertiaryBearColor = getBearishDivergenceColor(3)
+            
+            // Price chart line on main chart
+            if i_show_on_main
+                priceLine = line.new(High_Per_Bar3, high[bar_index - High_Per_Bar3], High_Last_Bar3, high[bar_index - High_Last_Bar3], color=tertiaryBearColor, width=i_line_width, style=lineStyle, force_overlay=true)
+                array.push(bearishLines, priceLine)
+            
+            // Indicator line on indicator panel
+            if i_show_on_indicator
+                indicatorLine = line.new(High_Per_Bar3, High_Per_Hist3, High_Last_Bar3, High_Last_Hist3, color=tertiaryBearColor, width=i_line_width, style=lineStyle)
+                array.push(bearishIndicatorLines, indicatorLine)
+            
+            // Add label if enabled
+            if Bear_Label
+                label.new(High_Last_Bar3, High_Last_Hist3, "BearDiv\nTertiary", color=color.new(tertiaryBearColor, 50), textcolor=tertiaryBearColor, style=label.style_label_up, size=size.small)
+            
+            // Manage lines array
+            manageLinesArray(bearishLines)
+            manageLinesArray(bearishIndicatorLines)
+
+// ==========================================
+// =========== PLOTTING ====================
+// ==========================================
+
+// Adjust opacity for comparison symbol candles
+compBullishColor = i_mono_mode ? getMonochromeColor(compSymbolBullishColor, i_mono_bull_brightness) : color.new(compSymbolBullishColor, 100 - i_comp_opacity)
+compBearishColor = i_mono_mode ? getMonochromeColor(compSymbolBearishColor, i_mono_bear_brightness) : color.new(compSymbolBearishColor, 100 - i_comp_opacity)
+compBullishWickColor = i_mono_mode ? getMonochromeColor(compSymbolBullishWickColor, i_mono_bull_brightness) : color.new(compSymbolBullishWickColor, 100 - i_comp_opacity)
+compBearishWickColor = i_mono_mode ? getMonochromeColor(compSymbolBearishWickColor, i_mono_bear_brightness) : color.new(compSymbolBearishWickColor, 100 - i_comp_opacity)
+
+// Plot candlesticks for comparison symbol
+plotcandle(Open, High, Low, Close, color=enableCompSymbolCandles ? (Close >= Open ? compBullishColor : compBearishColor) : na, wickcolor=enableCompSymbolCandles ? (Close >= Open ? compBullishWickColor : compBearishWickColor) : na, bordercolor=compSymbolBorderColor())
+
+// Plot border colors for main chart
+barcolor(mainChartBorderColor(), title="Main Chart Border Highlight")
+
+// Draw all divergence lines
+Drawing(Bull_Line, Bear_Line, Bull_Label, Bear_Label)
+
+// Display correlation information
+var correlationTable = table.new(position.top_right, 1, 2, bgcolor=color.new(color.black, 90))
+if barstate.islast and i_show_correlation
+    correlationColor = correlation >= i_min_correlation ? color.green : (correlation <= -i_min_correlation ? color.red : color.gray)
+    table.cell(correlationTable, 0, 0, "Symbol Correlation", bgcolor=color.new(color.black, 90), text_color=color.white)
+    table.cell(correlationTable, 0, 1, str.tostring(math.round(correlation * 100) / 100), bgcolor=color.new(color.black, 90), text_color=correlationColor)

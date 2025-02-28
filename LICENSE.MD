@@ -102,8 +102,7 @@ Upon termination, Licensee must:
 ### 11. CONTACT AND LICENSING
 
 For all licensing inquiries, contact:
-- Email: [Aviv's Contact Email]
-- Website: [Licensing Website]
+- Email: aquamarinex07@gmail.com
 
 ### 12. ACKNOWLEDGMENT
 

@@ -1,3 +1,6 @@
+// SMT Divergences & PSP by Aviv Shaked
+// © 2025 All Rights Reserved
+
 //@version=6
 // @description Enhanced Precision Candles & SMT Divergence with improved reliability and customization
 // ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -36,7 +39,6 @@
 // ╚══════════════════════════════════════════════════════════════════════════════╝
 
 indicator("Imbalances: Precision Candles & SMT Divergence - [Patchol]", shorttitle = "PSP & SMT", overlay=false, max_bars_back = 5000, max_lines_count = 500)
-// © Patchol
 
 // ==========================================
 // ===== ORGANIZED INPUT PARAMETERS ========

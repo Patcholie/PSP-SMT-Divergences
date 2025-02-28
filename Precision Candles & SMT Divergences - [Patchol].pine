@@ -36,6 +36,7 @@
 // ╚══════════════════════════════════════════════════════════════════════════════╝
 
 indicator("Imbalances: Precision Candles & SMT Divergence - [Patchol]", shorttitle = "PSP & SMT", overlay=false, max_bars_back = 5000, max_lines_count = 500)
+// © Patchol
 
 // ==========================================
 // ===== ORGANIZED INPUT PARAMETERS ========
@@ -131,6 +132,12 @@ g_psp_border = "███ Border Settings"
 i_enable_psp_borders = input.bool(true, "Show PSP Borders", inline="psp_border", group=g_psp_border)
 pspBorderColorBullish = input.color(color.green, "Bullish Border", inline="psp_border_colors", group=g_psp_border)
 pspBorderColorBearish = input.color(color.red, "Bearish Border", inline="psp_border_colors", group=g_psp_border)
+
+// Swing Point Filter Settings (NEW)
+g_swing_filter = "███ Swing Point Filter"
+i_psp_at_swing_only = input.bool(true, "Only Show PSP at Swing Points", tooltip="Filter PSP signals to only appear at significant market swing points", group=g_swing_filter)
+i_swing_lookback = input.int(3, "Swing Point Lookback", minval=1, maxval=10, tooltip="Number of bars to look back/forward to confirm a swing point", group=g_swing_filter)
+i_min_swing_threshold = input.float(0.2, "Minimum Swing Threshold (%)", minval=0.0, maxval=5.0, step=0.1, tooltip="Minimum percentage difference required between swing point and surrounding candles (0 = no threshold)", group=g_swing_filter)
 
 // Comparison Symbol Settings Group
 g_comp = "Comparison Symbol Settings"
@@ -244,6 +251,214 @@ isDivergenceStrong(price1, price2, indicator1, indicator2) =>
         strength >= i_min_strength
 
 // ==========================================
+// ===== SWING POINT DETECTION ============
+// ==========================================
+
+// Function to detect swing highs - checks for ascending order on left, descending on right
+isSwingHigh(lookback) =>
+    if lookback < 2 or bar_index < lookback * 2  // Need enough bars on both sides
+        false
+    else
+        // Middle candle high must be higher than all others in range
+        middleHigh = high[lookback]
+        isMiddleHighest = true
+        
+        // Check if the middle candle is the highest
+        for i = 1 to lookback
+            // Check candles on both sides
+            if i != lookback and middleHigh <= high[i]
+                isMiddleHighest := false
+                break
+            
+            // Also check candles extending past lookback if available
+            if 2*lookback-i >= 0 and middleHigh <= high[2*lookback-i]
+                isMiddleHighest := false
+                break
+        
+        // Verify left side is in ascending order (each bar higher than previous)
+        isLeftAscending = true
+        for i = 2*lookback to lookback+1
+            if i < bar_index and i-1 < bar_index
+                if high[i] >= high[i-1]  // If this bar's high isn't lower than next bar
+                    isLeftAscending := false
+                    break
+        
+        // Verify right side is in descending order (each bar lower than previous)
+        isRightDescending = true
+        for i = lookback-1 to 1
+            if i < bar_index and i+1 < bar_index
+                if high[i] <= high[i+1]  // If this bar's high isn't higher than next bar
+                    isRightDescending := false
+                    break
+        
+        // Apply threshold if enabled
+        thresholdPassed = true
+        if i_min_swing_threshold > 0.0
+            // Check if differences exceed the threshold
+            for i = 1 to lookback
+                if i != lookback
+                    // Left side difference
+                    if 2*lookback-i >= 0 and 2*lookback-i < bar_index
+                        leftDiffPct = (middleHigh - high[2*lookback-i]) / high[2*lookback-i] * 100
+                        if leftDiffPct < i_min_swing_threshold
+                            thresholdPassed := false
+                            break
+                    
+                    // Right side difference
+                    if i < bar_index
+                        rightDiffPct = (middleHigh - high[i]) / high[i] * 100
+                        if rightDiffPct < i_min_swing_threshold
+                            thresholdPassed := false
+                            break
+        
+        // All conditions must be met
+        isMiddleHighest and isLeftAscending and isRightDescending and thresholdPassed
+
+// Function to detect swing lows - checks for descending order on left, ascending on right
+isSwingLow(lookback) =>
+    if lookback < 2 or bar_index < lookback * 2  // Need enough bars on both sides
+        false
+    else
+        // Middle candle low must be lower than all others in range
+        middleLow = low[lookback]
+        isMiddleLowest = true
+        
+        // Check if the middle candle is the lowest
+        for i = 1 to lookback
+            // Check candles on both sides
+            if i != lookback and middleLow >= low[i]
+                isMiddleLowest := false
+                break
+            
+            // Also check candles extending past lookback if available
+            if 2*lookback-i >= 0 and middleLow >= low[2*lookback-i]
+                isMiddleLowest := false
+                break
+        
+        // Verify left side is in descending order (each bar lower than previous)
+        isLeftDescending = true
+        for i = 2*lookback to lookback+1
+            if i < bar_index and i-1 < bar_index
+                if low[i] <= low[i-1]  // If this bar's low isn't higher than next bar
+                    isLeftDescending := false
+                    break
+        
+        // Verify right side is in ascending order (each bar higher than previous)
+        isRightAscending = true
+        for i = lookback-1 to 1
+            if i < bar_index and i+1 < bar_index
+                if low[i] >= low[i+1]  // If this bar's low isn't lower than next bar
+                    isRightAscending := false
+                    break
+        
+        // Apply threshold if enabled
+        thresholdPassed = true
+        if i_min_swing_threshold > 0.0
+            // Check if differences exceed the threshold
+            for i = 1 to lookback
+                if i != lookback
+                    // Left side difference
+                    if 2*lookback-i >= 0 and 2*lookback-i < bar_index
+                        leftDiffPct = (low[2*lookback-i] - middleLow) / middleLow * 100
+                        if leftDiffPct < i_min_swing_threshold
+                            thresholdPassed := false
+                            break
+                    
+                    // Right side difference
+                    if i < bar_index
+                        rightDiffPct = (low[i] - middleLow) / middleLow * 100
+                        if rightDiffPct < i_min_swing_threshold
+                            thresholdPassed := false
+                            break
+        
+        // All conditions must be met
+        isMiddleLowest and isLeftDescending and isRightAscending and thresholdPassed
+
+// For current bar, we can only check bars to the left, but we try to project pattern
+isPotentialSwingHigh(lookback) =>
+    if lookback < 2 or bar_index < lookback // Need enough bars to left
+        false
+    else
+        // Current bar's high must be higher than all previous in range
+        currentHigh = high[0]
+        isCurrentHighest = true
+        
+        // Check if current candle is the highest in lookback range
+        for i = 1 to lookback * 2
+            if i < bar_index and currentHigh <= high[i]
+                isCurrentHighest := false
+                break
+        
+        // Verify left side is in ascending order
+        isLeftAscending = true
+        for i = lookback to 1
+            if i < bar_index and i+1 < bar_index
+                if high[i+1] >= high[i]  // If previous bar's high isn't lower than this bar
+                    isLeftAscending := false
+                    break
+        
+        // Apply threshold if enabled
+        thresholdPassed = true
+        if i_min_swing_threshold > 0.0
+            for i = 1 to lookback
+                if i < bar_index
+                    diffPct = (currentHigh - high[i]) / high[i] * 100
+                    if diffPct < i_min_swing_threshold
+                        thresholdPassed := false
+                        break
+        
+        // Must meet all conditions
+        isCurrentHighest and isLeftAscending and thresholdPassed
+
+isPotentialSwingLow(lookback) =>
+    if lookback < 2 or bar_index < lookback // Need enough bars to left
+        false
+    else
+        // Current bar's low must be lower than all previous in range
+        currentLow = low[0]
+        isCurrentLowest = true
+        
+        // Check if current candle is the lowest in lookback range
+        for i = 1 to lookback * 2
+            if i < bar_index and currentLow >= low[i]
+                isCurrentLowest := false
+                break
+        
+        // Verify left side is in descending order
+        isLeftDescending = true
+        for i = lookback to 1
+            if i < bar_index and i+1 < bar_index
+                if low[i+1] <= low[i]  // If previous bar's low isn't higher than this bar
+                    isLeftDescending := false
+                    break
+        
+        // Apply threshold if enabled
+        thresholdPassed = true
+        if i_min_swing_threshold > 0.0
+            for i = 1 to lookback
+                if i < bar_index
+                    diffPct = (low[i] - currentLow) / currentLow * 100
+                    if diffPct < i_min_swing_threshold
+                        thresholdPassed := false
+                        break
+        
+        // Must meet all conditions
+        isCurrentLowest and isLeftDescending and thresholdPassed
+
+// Detect if current bar is at a swing point (high or low)
+isAtSwingPoint(lookback) =>
+    // For confirmed swing points (looking back)
+    confirmedSwingHigh = isSwingHigh(lookback)
+    confirmedSwingLow = isSwingLow(lookback)
+    
+    // For potential swing points (current bar)
+    potentialSwingHigh = isPotentialSwingHigh(lookback)
+    potentialSwingLow = isPotentialSwingLow(lookback)
+    
+    // Return true if any of the conditions are met
+    confirmedSwingHigh or confirmedSwingLow or potentialSwingHigh or potentialSwingLow
+
+// ==========================================
 // ===== MAIN LOGIC CODE =================
 // ==========================================
 
@@ -272,9 +487,15 @@ isRedChartSymbol = chartSymbolClose < chartSymbolOpen
 isGreenCompSymbol = compSymbolClose > compSymbolOpen
 isRedCompSymbol = compSymbolClose < compSymbolOpen
 
-// Condition for green and red markings
-markGreen = enableMarkGreen and isRedCompSymbol and isGreenChartSymbol
-markRed = enableMarkRed and isGreenCompSymbol and isRedChartSymbol
+// Check if current bar is at a swing point
+currentBarAtSwingPoint = isAtSwingPoint(i_swing_lookback)
+
+// Condition for green and red markings with swing point filter
+markGreen = enableMarkGreen and isRedCompSymbol and isGreenChartSymbol and 
+           (not i_psp_at_swing_only or (i_psp_at_swing_only and currentBarAtSwingPoint))
+           
+markRed = enableMarkRed and isGreenCompSymbol and isRedChartSymbol and 
+          (not i_psp_at_swing_only or (i_psp_at_swing_only and currentBarAtSwingPoint))
 
 // Apply monochrome colors if needed
 pspBullishBorderColor = getMonochromeColor(pspBorderColorBullish, i_mono_bull_brightness)
@@ -488,15 +709,19 @@ compSymbolBorderColor() =>
     isPSPGreen = isRedCompSymbol and isGreenChartSymbol
     isPSPRed = isGreenCompSymbol and isRedChartSymbol
     
+    // Apply swing point filter if enabled
+    isPSPGreenWithFilter = isPSPGreen and (not i_psp_at_swing_only or (i_psp_at_swing_only and currentBarAtSwingPoint))
+    isPSPRedWithFilter = isPSPRed and (not i_psp_at_swing_only or (i_psp_at_swing_only and currentBarAtSwingPoint))
+    
     if enableCompSymbolCandles and i_enable_psp_borders
-        if isPSPGreen
+        if isPSPGreenWithFilter
             // In monochrome mode, use contrasting border (opposite brightness)
             if i_mono_mode
                 // For bullish PSP, use darker border on lighter candle
                 getMonochromeColor(color.white, math.max(10, i_mono_bull_brightness - 50))
             else
                 pspBullishBorderColor
-        else if isPSPRed
+        else if isPSPRedWithFilter
             // In monochrome mode, use contrasting border (opposite brightness)
             if i_mono_mode
                 // For bearish PSP, use lighter border on darker candle
@@ -702,3 +927,6 @@ if barstate.islast and i_show_correlation
     correlationColor = correlation >= i_min_correlation ? color.green : (correlation <= -i_min_correlation ? color.red : color.gray)
     table.cell(correlationTable, 0, 0, "Symbol Correlation", bgcolor=color.new(color.black, 90), text_color=color.white)
     table.cell(correlationTable, 0, 1, str.tostring(math.round(correlation * 100) / 100), bgcolor=color.new(color.black, 90), text_color=correlationColor)
+
+// Display swing point detection information (for debugging, can be removed in final version)
+// plotchar(currentBarAtSwingPoint, "Swing Point", "•", location.top, color=color.yellow, size=size.small)

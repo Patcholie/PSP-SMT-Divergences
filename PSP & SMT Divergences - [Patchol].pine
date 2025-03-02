@@ -1,5 +1,9 @@
-// SMT Divergences & PSP by Aviv Shaked
-// © 2025 All Rights Reserved
+// SMT Divergences & PSP Indicator
+// Copyright © 2025 Aviv Shaked. All Rights Reserved.
+// Modified by Aviv Shaked on 2/03/2025 - Added modified license.
+// Licensed exclusively to Aviv Shaked for personal use only.
+// REDISTRIBUTION IN ANY FORM IS STRICTLY PROHIBITED.
+// This software may only be obtained directly from Aviv Shaked.
 
 //@version=6
 // @description Enhanced Precision Candles & SMT Divergence with improved reliability and customization

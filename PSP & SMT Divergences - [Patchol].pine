@@ -21,7 +21,7 @@
 // ║                                                                              ║
 // ║  IMPORTANT LIMITATIONS:                                                      ║
 // ║  • Heavily dependent on correlation between symbols                          ║
-// ║  • PSP detection uses simple opposite-direction logic without confirmations  ║
+// ║  • PSP detection uses swing point reverse direction logic without confirms   ║
 // ║  • Fixed fractal periods may not adapt well to different market conditions   ║
 // ║  • Higher false signal rate in choppy or sideways markets                    ║
 // ║  • No adjustments for varying volatility environments                        ║
@@ -33,16 +33,17 @@
 // ║  • Combine with additional confirmation signals before trading               ║
 // ║  • Consider PSP signals as areas of interest, not exact entry/exit points    ║
 // ║  • Monitor correlation value - signals unreliable when correlation is weak   ║
+// ║  • Enable Swing Point Detection with a low threshold to show correct PSP's   ║
 // ║                                                                              ║
 // ║  OPTIMAL USAGE:                                                              ║
-// ║  • Most effective with highly correlated pairs (ES1/SPY, sector ETFs)        ║
+// ║  • Most effective with highly correlated pairs (ES1/NQ1, sector ETFs)        ║
 // ║  • Works best in trending markets with clear directional moves               ║
 // ║  • Lower settings for fractal periods in higher timeframes                   ║
 // ║  • Higher strength filter values in volatile markets                         ║
 // ║                                                                              ║
 // ╚══════════════════════════════════════════════════════════════════════════════╝
 
-indicator("Imbalances: Precision Candles & SMT Divergence - [Patchol]", shorttitle = "PSP & SMT", overlay=false, max_bars_back = 5000, max_lines_count = 500)
+indicator("Imbalances: Precision Candles & SMT Divergence - [Patchol]", shorttitle = "PSP & SMT", overlay=true, max_bars_back = 5000, max_lines_count = 500)
 
 // ==========================================
 // ===== ORGANIZED INPUT PARAMETERS ========
@@ -139,9 +140,17 @@ i_enable_psp_borders = input.bool(true, "Show PSP Borders", inline="psp_border",
 pspBorderColorBullish = input.color(color.green, "Bullish Border", inline="psp_border_colors", group=g_psp_border)
 pspBorderColorBearish = input.color(color.red, "Bearish Border", inline="psp_border_colors", group=g_psp_border)
 
+// PSP Zone Settings
+g_psp_zone = "███ PSP Zone Settings"
+i_enable_psp_zones = input.bool(true, "Show PSP Zones", tooltip="Display zones between wick and body at swing points", group=g_psp_zone)
+i_psp_zone_extend = input.int(3, "Zone Extension (Candles)", minval=1, maxval=20, tooltip="Number of candles to extend the PSP zone", group=g_psp_zone)
+i_psp_zone_opacity = input.int(70, "Zone Opacity (%)", minval=10, maxval=100, tooltip="Transparency of PSP zones", group=g_psp_zone)
+pspZoneColorBullish = input.color(color.green, "Bullish Zone Color", group=g_psp_zone)
+pspZoneColorBearish = input.color(color.red, "Bearish Zone Color", group=g_psp_zone)
+
 // Swing Point Filter Settings (NEW)
 g_swing_filter = "███ Swing Point Filter"
-i_psp_at_swing_only = input.bool(true, "Only Show PSP at Swing Points", tooltip="Filter PSP signals to only appear at significant market swing points", group=g_swing_filter)
+i_psp_at_swing_only = input.bool(false, "Only Show PSP at Swing Points", tooltip="Filter PSP signals to only appear at significant market swing points", group=g_swing_filter)
 i_swing_lookback = input.int(3, "Swing Point Lookback", minval=1, maxval=10, tooltip="Number of bars to look back/forward to confirm a swing point", group=g_swing_filter)
 i_min_swing_threshold = input.float(0.2, "Minimum Swing Threshold (%)", minval=0.0, maxval=5.0, step=0.1, tooltip="Minimum percentage difference required between swing point and surrounding candles (0 = no threshold)", group=g_swing_filter)
 
@@ -163,6 +172,10 @@ compSymbolBearishWickColor = input.color(#f23645, "Bearish Wick", inline="comp_b
 g_mono = "Monochrome Mode Settings"
 i_mono_bull_brightness = input.int(80, "Bullish Brightness", minval=0, maxval=100, inline="mono_brightness", group=g_mono)
 i_mono_bear_brightness = input.int(20, "Bearish Brightness", minval=0, maxval=100, inline="mono_brightness", group=g_mono)
+
+// Variables for PSP Zones
+var box[] bullishZoneBoxes = array.new_box(0)
+var box[] bearishZoneBoxes = array.new_box(0)
 
 // ==========================================
 // ===== HELPER FUNCTIONS =================
@@ -255,6 +268,14 @@ isDivergenceStrong(price1, price2, indicator1, indicator2) =>
     else
         strength = calculateDivergenceStrength(price1, price2, indicator1, indicator2)
         strength >= i_min_strength
+
+// Function to manage box arrays
+managePSPBoxes(box[] boxArray, int maxBoxes) =>
+    if array.size(boxArray) > maxBoxes
+        boxesToRemove = array.size(boxArray) - maxBoxes
+        for i = 0 to boxesToRemove - 1
+            oldBox = array.shift(boxArray)
+            box.delete(oldBox)
 
 // ==========================================
 // ===== SWING POINT DETECTION ============
@@ -464,6 +485,7 @@ isAtSwingPoint(lookback) =>
     // Return true if any of the conditions are met
     confirmedSwingHigh or confirmedSwingLow or potentialSwingHigh or potentialSwingLow
 
+
 // ==========================================
 // ===== MAIN LOGIC CODE =================
 // ==========================================
@@ -497,11 +519,47 @@ isRedCompSymbol = compSymbolClose < compSymbolOpen
 currentBarAtSwingPoint = isAtSwingPoint(i_swing_lookback)
 
 // Condition for green and red markings with swing point filter
-markGreen = enableMarkGreen and isRedCompSymbol and isGreenChartSymbol and 
-           (not i_psp_at_swing_only or (i_psp_at_swing_only and currentBarAtSwingPoint))
-           
-markRed = enableMarkRed and isGreenCompSymbol and isRedChartSymbol and 
-          (not i_psp_at_swing_only or (i_psp_at_swing_only and currentBarAtSwingPoint))
+markGreen = enableMarkGreen and isRedCompSymbol and isGreenChartSymbol and (not i_psp_at_swing_only or (i_psp_at_swing_only and currentBarAtSwingPoint))
+markRed = enableMarkRed and isGreenCompSymbol and isRedChartSymbol and (not i_psp_at_swing_only or (i_psp_at_swing_only and currentBarAtSwingPoint))
+
+// ==========================================
+// ===== PSP ZONE MANAGEMENT ==============
+// ==========================================
+
+// Set maximum number of boxes to maintain performance
+maxPSPBoxes = 20
+
+// Clean up old boxes to maintain performance
+managePSPBoxes(bullishZoneBoxes, maxPSPBoxes)
+managePSPBoxes(bearishZoneBoxes, maxPSPBoxes)
+
+// Create new bullish PSP zone (bottom of body to wick) for bullish PSP at swing point
+if markGreen and i_enable_psp_zones
+    bodyBottom = math.min(open, close)
+    wickBottom = low
+    zoneStart = bar_index
+    zoneEnd = bar_index + i_psp_zone_extend
+    
+    // Create a box for the zone - exactly from body bottom to wick bottom
+    zoneColor = i_mono_mode ? color.new(getMonochromeColor(pspZoneColorBullish, i_mono_bull_brightness), 100 - i_psp_zone_opacity) : color.new(pspZoneColorBullish, 100 - i_psp_zone_opacity)
+    
+    // The box needs left, top, right, bottom coordinates
+    zoneBox = box.new(left=zoneStart, top=bodyBottom,      right=zoneEnd, bottom=wickBottom,   bgcolor=zoneColor,border_color=na, force_overlay = true   )
+    array.push(bullishZoneBoxes, zoneBox)
+
+// Create new bearish PSP zone (top of body to wick) for bearish PSP at swing point
+if markRed and i_enable_psp_zones
+    bodyTop = math.max(open, close)
+    wickTop = high
+    zoneStart = bar_index
+    zoneEnd = bar_index + i_psp_zone_extend
+    
+    // Create a box for the zone - exactly from body top to wick top
+    zoneColor = i_mono_mode ? color.new(getMonochromeColor(pspZoneColorBearish, i_mono_bear_brightness), 100 - i_psp_zone_opacity) : color.new(pspZoneColorBearish, 100 - i_psp_zone_opacity)
+    
+    // The box needs left, top, right, bottom coordinates
+    zoneBox = box.new(left=zoneStart, top=wickTop,        right=zoneEnd, bottom=bodyTop,      bgcolor=zoneColor,border_color=na,     force_overlay = true  )
+    array.push(bearishZoneBoxes, zoneBox)
 
 // Apply monochrome colors if needed
 pspBullishBorderColor = getMonochromeColor(pspBorderColorBullish, i_mono_bull_brightness)

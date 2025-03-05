@@ -43,7 +43,7 @@
 // ║                                                                              ║
 // ╚══════════════════════════════════════════════════════════════════════════════╝
 
-indicator("Imbalances: Precision Candles & SMT Divergence - [Patchol]", shorttitle = "PSP & SMT", overlay=true, max_bars_back = 5000, max_lines_count = 500)
+indicator("Imbalances: Precision Candles & SMT Divergence - [Patchol]", shorttitle = "PSP & SMT [Patchol]", overlay=true, max_bars_back = 5000, max_lines_count = 500)
 
 // ==========================================
 // ===== ORGANIZED INPUT PARAMETERS ========
@@ -139,6 +139,13 @@ g_psp_border = "███ Border Settings"
 i_enable_psp_borders = input.bool(true, "Show PSP Borders", inline="psp_border", group=g_psp_border)
 pspBorderColorBullish = input.color(color.green, "Bullish Border", inline="psp_border_colors", group=g_psp_border)
 pspBorderColorBearish = input.color(color.red, "Bearish Border", inline="psp_border_colors", group=g_psp_border)
+
+// NEW: Swing Point Filter Settings
+g_psp_swing = "███ Swing Point Filter"
+i_enable_swing_filter = input.bool(false, "Only Show PSP at Swing Points", tooltip="Only show PSP signals that occur at swing points", group=g_psp_swing)
+i_swing_lookback = input.int(1, "Swing Point Lookback", minval=1, maxval=5, tooltip="Number of bars to look back for swing point detection", group=g_psp_swing)
+i_swing_threshold = input.float(0.2, "Minimum Swing Threshold (%)", minval=0.0, maxval=5.0, step=0.1, tooltip="Minimum percentage difference required for a valid swing point (0 = no threshold)", group=g_psp_swing)
+i_show_swing_points = input.bool(false, "Show Swing Point Markers", tooltip="Display triangle markers at detected swing points", group=g_psp_swing)
 
 // PSP Zone Settings
 g_psp_zone = "███ PSP Zone Settings"
@@ -276,8 +283,51 @@ managePSPBoxes(box[] boxArray, int maxBoxes) =>
 // ===== SWING POINT DETECTION ============
 // ==========================================
 
-// To be revamped
+// NEW: Swing Point Detection Functions (adapted from the provided code)
+// SL = Swing Low, SH = Swing High detection
+SL(i) => 
+    if bar_index >= i + 1
+        base_condition = high[i - 1] > high[i] and high[i] < high[i + 1] and low[i - 1] > low[i] and low[i] < low[i + 1]
+        
+        // Apply threshold if enabled
+        if i_swing_threshold > 0 and base_condition
+            thresholdValue = close[i] * i_swing_threshold / 100
+            base_condition := base_condition and 
+                           (high[i - 1] - high[i] >= thresholdValue) and 
+                           (high[i + 1] - high[i] >= thresholdValue) and
+                           (low[i - 1] - low[i] >= thresholdValue) and 
+                           (low[i + 1] - low[i] >= thresholdValue)
+        base_condition
+    else
+        false
 
+SH(i) => 
+    if bar_index >= i + 1
+        base_condition = high[i - 1] < high[i] and high[i] > high[i + 1] and low[i - 1] < low[i] and low[i] > low[i + 1]
+        
+        // Apply threshold if enabled
+        if i_swing_threshold > 0 and base_condition
+            thresholdValue = close[i] * i_swing_threshold / 100
+            base_condition := base_condition and 
+                           (high[i] - high[i - 1] >= thresholdValue) and 
+                           (high[i] - high[i + 1] >= thresholdValue) and
+                           (low[i] - low[i - 1] >= thresholdValue) and 
+                           (low[i] - low[i + 1] >= thresholdValue)
+        base_condition
+    else
+        false
+
+// Enhanced functions to avoid overlap (as in the original code)
+SLX(i) => SL(i) and not SH(i + 1)
+SHX(i) => SH(i) and not SL(i + 1)
+
+// Detect swing points at the specified lookback
+isSwingLow = SLX(i_swing_lookback)
+isSwingHigh = SHX(i_swing_lookback)
+
+// Plot swing points if enabled
+plotshape(i_show_swing_points and isSwingLow, "Swing Low", shape.triangleup, location.belowbar, i_mono_mode ? getMonochromeColor(color.green, i_mono_bull_brightness) : color.green, offset=-i_swing_lookback)
+plotshape(i_show_swing_points and isSwingHigh, "Swing High", shape.triangledown, location.abovebar, i_mono_mode ? getMonochromeColor(color.red, i_mono_bull_brightness) : color.red, offset=-i_swing_lookback)
 
 // ==========================================
 // ===== MAIN LOGIC CODE =================
@@ -308,10 +358,12 @@ isRedChartSymbol = chartSymbolClose < chartSymbolOpen
 isGreenCompSymbol = compSymbolClose > compSymbolOpen
 isRedCompSymbol = compSymbolClose < compSymbolOpen
 
-// Condition for green and red markings
-markGreen = enableMarkGreen and isRedCompSymbol and isGreenChartSymbol 
+// Condition for green and red markings with swing point filtering
+markGreen = enableMarkGreen and isRedCompSymbol and isGreenChartSymbol and 
+          (not i_enable_swing_filter or isSwingLow)
 
-markRed = enableMarkRed and isGreenCompSymbol and isRedChartSymbol 
+markRed = enableMarkRed and isGreenCompSymbol and isRedChartSymbol and 
+         (not i_enable_swing_filter or isSwingHigh)
 
 // ==========================================
 // ===== PSP ZONE MANAGEMENT ==============
@@ -335,7 +387,7 @@ if markGreen and i_enable_psp_zones
     zoneColor = i_mono_mode ? color.new(getMonochromeColor(pspZoneColorBullish, i_mono_bull_brightness), 100 - i_psp_zone_opacity) : color.new(pspZoneColorBullish, 100 - i_psp_zone_opacity)
     
     // The box needs left, top, right, bottom coordinates
-    zoneBox = box.new(left=zoneStart, top=bodyBottom,      right=zoneEnd, bottom=wickBottom,   bgcolor=zoneColor,border_color=na, force_overlay = true   )
+    zoneBox = box.new(left=zoneStart, top=bodyBottom, right=zoneEnd, bottom=wickBottom, bgcolor=zoneColor, border_color=na, force_overlay=true)
     array.push(bullishZoneBoxes, zoneBox)
 
 // Create new bearish PSP zone (top of body to wick) for bearish PSP 
@@ -349,7 +401,7 @@ if markRed and i_enable_psp_zones
     zoneColor = i_mono_mode ? color.new(getMonochromeColor(pspZoneColorBearish, i_mono_bear_brightness), 100 - i_psp_zone_opacity) : color.new(pspZoneColorBearish, 100 - i_psp_zone_opacity)
     
     // The box needs left, top, right, bottom coordinates
-    zoneBox = box.new(left=zoneStart, top=wickTop,        right=zoneEnd, bottom=bodyTop,      bgcolor=zoneColor,border_color=na,     force_overlay = true  )
+    zoneBox = box.new(left=zoneStart, top=wickTop, right=zoneEnd, bottom=bodyTop, bgcolor=zoneColor, border_color=na, force_overlay=true)
     array.push(bearishZoneBoxes, zoneBox)
 
 // Apply monochrome colors if needed
@@ -565,8 +617,8 @@ compSymbolBorderColor() =>
     isPSPRed = isGreenCompSymbol and isRedChartSymbol
     
     // Apply swing point filter if enabled
-    isPSPGreenWithFilter = isPSPGreen 
-    isPSPRedWithFilter = isPSPRed 
+    isPSPGreenWithFilter = isPSPGreen and (not i_enable_swing_filter or isSwingLow)
+    isPSPRedWithFilter = isPSPRed and (not i_enable_swing_filter or isSwingHigh)
     
     if enableCompSymbolCandles and i_enable_psp_borders
         if isPSPGreenWithFilter
@@ -782,4 +834,3 @@ if barstate.islast and i_show_correlation
     correlationColor = correlation >= i_min_correlation ? color.green : (correlation <= -i_min_correlation ? color.red : color.gray)
     table.cell(correlationTable, 0, 0, "Symbol Correlation", bgcolor=color.new(color.black, 90), text_color=color.white)
     table.cell(correlationTable, 0, 1, str.tostring(math.round(correlation * 100) / 100), bgcolor=color.new(color.black, 90), text_color=correlationColor)
-

@@ -59,7 +59,6 @@ i_min_correlation = input.float(0.5, "Minimum Correlation", minval=0, maxval=1, 
 // Display Mode Group
 g_display = "Display Mode"
 i_mono_mode = input.bool(false, "Monochrome Mode", group=g_display)
-i_theme_brightness = input.float(0.0, "Brightness Adjustment", minval=-1.0, maxval=1.0, step=0.1, group=g_display)
 
 // Timeframe Adaptation Settings
 g_timeframe = "Timeframe Adaptation Settings"
@@ -140,12 +139,22 @@ i_enable_psp_borders = input.bool(true, "Show PSP Borders", inline="psp_border",
 pspBorderColorBullish = input.color(color.green, "Bullish Border", inline="psp_border_colors", group=g_psp_border)
 pspBorderColorBearish = input.color(color.red, "Bearish Border", inline="psp_border_colors", group=g_psp_border)
 
-// NEW: Swing Point Filter Settings
+// Swing Point Filter Settings
 g_psp_swing = "███ Swing Point Filter"
 i_enable_swing_filter = input.bool(false, "Only Show PSP at Swing Points", tooltip="Only show PSP signals that occur at swing points", group=g_psp_swing)
 i_swing_lookback = input.int(1, "Swing Point Lookback", minval=1, maxval=5, tooltip="Number of bars to look back for swing point detection", group=g_psp_swing)
 i_swing_threshold = input.float(0.2, "Minimum Swing Threshold (%)", minval=0.0, maxval=5.0, step=0.1, tooltip="Minimum percentage difference required for a valid swing point (0 = no threshold)", group=g_psp_swing)
 i_show_swing_points = input.bool(false, "Show Swing Point Markers", tooltip="Display triangle markers at detected swing points", group=g_psp_swing)
+
+// ENHANCED Swing Point Settings
+g_swing_advanced = "███ Advanced Swing Point Settings"
+i_check_entire_lookback = input.bool(true, "Check Entire Lookback Window", tooltip="Compare against all bars in lookback window instead of just adjacent bars", group=g_swing_advanced)
+i_use_wicks = input.bool(true, "Use Wick Prices", tooltip="Use high/low (true) or open/close (false) for swing detection", group=g_swing_advanced)
+i_use_atr_filter = input.bool(false, "Use ATR Filter", tooltip="Filter swing points based on ATR (Average True Range)", group=g_swing_advanced)
+i_atr_multiplier = input.float(1.0, "ATR Multiplier", minval=0.5, maxval=3.0, step=0.1, tooltip="Multiply ATR by this value for filtering (higher = fewer signals)", group=g_swing_advanced)
+i_atr_length = input.int(14, "ATR Length", minval=5, maxval=50, tooltip="Period for ATR calculation", group=g_swing_advanced)
+i_avoid_overlap = input.bool(true, "Prevent Signal Overlap", tooltip="Prevent swing high and swing low signals from occurring on adjacent bars", group=g_swing_advanced)
+i_visualize_strength = input.bool(false, "Visualize Swing Strength", tooltip="Show swing strength in labels", group=g_swing_advanced)
 
 // PSP Zone Settings
 g_psp_zone = "███ PSP Zone Settings"
@@ -154,7 +163,6 @@ i_psp_zone_extend = input.int(3, "Zone Extension (Candles)", minval=1, maxval=20
 i_psp_zone_opacity = input.int(70, "Zone Opacity (%)", minval=10, maxval=100, tooltip="Transparency of PSP zones", group=g_psp_zone)
 pspZoneColorBullish = input.color(color.green, "Bullish Zone Color", group=g_psp_zone)
 pspZoneColorBearish = input.color(color.red, "Bearish Zone Color", group=g_psp_zone)
-
 
 // Comparison Symbol Settings Group
 g_comp = "Comparison Symbol Settings"
@@ -280,54 +288,192 @@ managePSPBoxes(box[] boxArray, int maxBoxes) =>
             box.delete(oldBox)
 
 // ==========================================
-// ===== SWING POINT DETECTION ============
+// ===== ENHANCED SWING POINT DETECTION ===
 // ==========================================
 
-// NEW: Swing Point Detection Functions (adapted from the provided code)
-// SL = Swing Low, SH = Swing High detection
-SL(i) => 
-    if bar_index >= i + 1
-        base_condition = high[i - 1] > high[i] and high[i] < high[i + 1] and low[i - 1] > low[i] and low[i] < low[i + 1]
+// Enhanced swing detection function
+enhancedSwingHigh(lookback, threshold) =>
+    if bar_index < lookback
+        false
+    else
+        // Determine which price to use based on setting
+        highPrice = i_use_wicks ? high : math.max(open, close)
+        
+        // Advanced detection: check entire lookback window if enabled
+        isHighPoint = true
+        
+        if i_check_entire_lookback
+            // Check if higher than all bars in lookback window
+            for i = 1 to lookback
+                // Check left side
+                if highPrice[lookback] <= highPrice[lookback + i]
+                    isHighPoint := false
+                    break
+            
+            // Only check right side if left side passed
+            if isHighPoint and bar_index >= lookback + lookback
+                for i = 1 to lookback
+                    // Check right side (if we have enough bars)
+                    if highPrice[lookback] <= highPrice[lookback - i]
+                        isHighPoint := false
+                        break
+        else
+            // Simplified check against just adjacent bars
+            isHighPoint := highPrice[lookback] > highPrice[lookback - 1] and highPrice[lookback] > highPrice[lookback + 1]
         
         // Apply threshold if enabled
-        if i_swing_threshold > 0 and base_condition
-            thresholdValue = close[i] * i_swing_threshold / 100
-            base_condition := base_condition and 
-                           (high[i - 1] - high[i] >= thresholdValue) and 
-                           (high[i + 1] - high[i] >= thresholdValue) and
-                           (low[i - 1] - low[i] >= thresholdValue) and 
-                           (low[i + 1] - low[i] >= thresholdValue)
-        base_condition
-    else
-        false
+        if threshold > 0 and isHighPoint
+            thresholdValue = close[lookback] * threshold / 100
+            
+            // Find the highest surrounding high (excluding current bar)
+            surroundingMax = -1.0 * float(na)
+            if i_check_entire_lookback
+                for i = 1 to lookback
+                    // Check left side
+                    if i <= lookback
+                        surroundingMax := math.max(nz(surroundingMax, highPrice[lookback + i]), highPrice[lookback + i])
+                    
+                    // Check right side (if we have enough bars)
+                    if bar_index >= lookback + i
+                        surroundingMax := math.max(nz(surroundingMax, highPrice[lookback - i]), highPrice[lookback - i])
+            else
+                surroundingMax := math.max(highPrice[lookback - 1], highPrice[lookback + 1])
+            
+            // Check if difference exceeds threshold
+            isHighPoint := isHighPoint and (highPrice[lookback] - nz(surroundingMax, 0)) >= thresholdValue
+        
+        // Apply ATR filter if enabled
+        if i_use_atr_filter and isHighPoint
+            atr = ta.atr(i_atr_length)
+            atrThreshold = atr * i_atr_multiplier
+            
+            // Find adjacent low for measuring swing height
+            adjacentLow = math.min(low[lookback - 1], low[lookback + 1])
+            swingHeight = highPrice[lookback] - adjacentLow
+            
+            // Filter out swings smaller than ATR threshold
+            isHighPoint := isHighPoint and swingHeight >= atrThreshold
+        
+        isHighPoint
 
-SH(i) => 
-    if bar_index >= i + 1
-        base_condition = high[i - 1] < high[i] and high[i] > high[i + 1] and low[i - 1] < low[i] and low[i] > low[i + 1]
+enhancedSwingLow(lookback, threshold) =>
+    if bar_index < lookback
+        false
+    else
+        // Determine which price to use based on setting
+        lowPrice = i_use_wicks ? low : math.min(open, close)
+        
+        // Advanced detection: check entire lookback window if enabled
+        isLowPoint = true
+        
+        if i_check_entire_lookback
+            // Check if lower than all bars in lookback window
+            for i = 1 to lookback
+                // Check left side
+                if lowPrice[lookback] >= lowPrice[lookback + i]
+                    isLowPoint := false
+                    break
+            
+            // Only check right side if left side passed
+            if isLowPoint and bar_index >= lookback + lookback
+                for i = 1 to lookback
+                    // Check right side (if we have enough bars)
+                    if lowPrice[lookback] >= lowPrice[lookback - i]
+                        isLowPoint := false
+                        break
+        else
+            // Simplified check against just adjacent bars
+            isLowPoint := lowPrice[lookback] < lowPrice[lookback - 1] and 
+                       lowPrice[lookback] < lowPrice[lookback + 1]
         
         // Apply threshold if enabled
-        if i_swing_threshold > 0 and base_condition
-            thresholdValue = close[i] * i_swing_threshold / 100
-            base_condition := base_condition and 
-                           (high[i] - high[i - 1] >= thresholdValue) and 
-                           (high[i] - high[i + 1] >= thresholdValue) and
-                           (low[i] - low[i - 1] >= thresholdValue) and 
-                           (low[i] - low[i + 1] >= thresholdValue)
-        base_condition
+        if threshold > 0 and isLowPoint
+            thresholdValue = close[lookback] * threshold / 100
+            
+            // Find the lowest surrounding low (excluding current bar)
+            surroundingMin = float(na)
+            if i_check_entire_lookback
+                for i = 1 to lookback
+                    // Check left side
+                    if i <= lookback
+                        currentValue = lowPrice[lookback + i]
+                        surroundingMin := na(surroundingMin) ? currentValue : math.min(surroundingMin, currentValue)
+                    
+                    // Check right side (if we have enough bars)
+                    if bar_index >= lookback + i
+                        currentValue = lowPrice[lookback - i]
+                        surroundingMin := na(surroundingMin) ? currentValue : math.min(surroundingMin, currentValue)
+            else
+                surroundingMin := math.min(lowPrice[lookback - 1], lowPrice[lookback + 1])
+            
+            // Check if difference exceeds threshold
+            isLowPoint := isLowPoint and (nz(surroundingMin, 9999999) - lowPrice[lookback]) >= thresholdValue
+        
+        // Apply ATR filter if enabled
+        if i_use_atr_filter and isLowPoint
+            atr = ta.atr(i_atr_length)
+            atrThreshold = atr * i_atr_multiplier
+            
+            // Find adjacent high for measuring swing depth
+            adjacentHigh = math.max(high[lookback - 1], high[lookback + 1])
+            swingDepth = adjacentHigh - lowPrice[lookback]
+            
+            // Filter out swings smaller than ATR threshold
+            isLowPoint := isLowPoint and swingDepth >= atrThreshold
+        
+        isLowPoint
+
+// Enhanced functions to avoid overlapping signals
+enhancedSHX(lookback, threshold) =>
+    highCondition = enhancedSwingHigh(lookback, threshold)
+    
+    if i_avoid_overlap and highCondition and bar_index >= lookback + 1
+        // Make sure there's not a swing low on adjacent bars
+        noLowOverlap = not enhancedSwingLow(lookback - 1, threshold) and 
+                     not enhancedSwingLow(lookback + 1, threshold)
+        highCondition and noLowOverlap
     else
-        false
+        highCondition
 
-// Enhanced functions to avoid overlap (as in the original code)
-SLX(i) => SL(i) and not SH(i + 1)
-SHX(i) => SH(i) and not SL(i + 1)
+enhancedSLX(lookback, threshold) =>
+    lowCondition = enhancedSwingLow(lookback, threshold)
+    
+    if i_avoid_overlap and lowCondition and bar_index >= lookback + 1
+        // Make sure there's not a swing high on adjacent bars
+        noHighOverlap = not enhancedSwingHigh(lookback - 1, threshold) and 
+                      not enhancedSwingHigh(lookback + 1, threshold)
+        lowCondition and noHighOverlap
+    else
+        lowCondition
 
-// Detect swing points at the specified lookback
-isSwingLow = SLX(i_swing_lookback)
-isSwingHigh = SHX(i_swing_lookback)
+// Calculate swing strength (for visualization or filtering)
+calculateSwingStrength(isHigh, lookback) =>
+    if bar_index < lookback
+        0.0
+    else
+        // Calculate ATR for normalization
+        atr = ta.atr(i_atr_length)
+        
+        // Determine which price to use
+        highPrice = i_use_wicks ? high : math.max(open, close)
+        lowPrice = i_use_wicks ? low : math.min(open, close)
+        
+        if isHigh
+            // For swing highs: measure height as % of ATR
+            swingHeight = highPrice[lookback] - math.min(low[lookback-1], low[lookback+1])
+            swingHeight / atr
+        else
+            // For swing lows: measure depth as % of ATR
+            swingDepth = math.max(high[lookback-1], high[lookback+1]) - lowPrice[lookback]
+            swingDepth / atr
 
-// Plot swing points if enabled
-plotshape(i_show_swing_points and isSwingLow, "Swing Low", shape.triangleup, location.belowbar, i_mono_mode ? getMonochromeColor(color.green, i_mono_bull_brightness) : color.green, offset=-i_swing_lookback)
-plotshape(i_show_swing_points and isSwingHigh, "Swing High", shape.triangledown, location.abovebar, i_mono_mode ? getMonochromeColor(color.red, i_mono_bull_brightness) : color.red, offset=-i_swing_lookback)
+// Detect swing points using enhanced detection
+isSwingLow = enhancedSLX(i_swing_lookback, i_swing_threshold)
+isSwingHigh = enhancedSHX(i_swing_lookback, i_swing_threshold)
+
+// Calculate strength for visualization
+swingLowStrength = isSwingLow ? calculateSwingStrength(false, i_swing_lookback) : 0
+swingHighStrength = isSwingHigh ? calculateSwingStrength(true, i_swing_lookback) : 0
 
 // ==========================================
 // ===== MAIN LOGIC CODE =================
@@ -365,6 +511,16 @@ markGreen = enableMarkGreen and isRedCompSymbol and isGreenChartSymbol and
 markRed = enableMarkRed and isGreenCompSymbol and isRedChartSymbol and 
          (not i_enable_swing_filter or isSwingHigh)
 
+// Debug logging for swing points
+if isSwingLow
+    log.info("Swing Low Detected at Bar Index: {0}, Time: {1}, Price: {2}, Strength: {3}", 
+             bar_index, time, low[i_swing_lookback], swingLowStrength)
+
+// Debug log for Swing High Points
+if isSwingHigh
+    log.info("Swing High Detected at Bar Index: {0}, Time: {1}, Price: {2}, Strength: {3}", 
+             bar_index, time, high[i_swing_lookback], swingHighStrength)
+
 // ==========================================
 // ===== PSP ZONE MANAGEMENT ==============
 // ==========================================
@@ -375,6 +531,30 @@ maxPSPBoxes = 20
 // Clean up old boxes to maintain performance
 managePSPBoxes(bullishZoneBoxes, maxPSPBoxes)
 managePSPBoxes(bearishZoneBoxes, maxPSPBoxes)
+
+// Detailed PSP Green (Bullish) Signal Logging
+if markGreen
+    log.info("Bullish PSP Signal Detected")
+    log.info("Main Chart Symbol: Close {0}, Open {1}", chartSymbolClose, chartSymbolOpen)
+    log.info("Comparison Symbol: Close {0}, Open {1}", compSymbolClose, compSymbolOpen)
+    log.info("Correlation: {0}", correlation)
+    
+    // If swing point filter is enabled, log additional details
+    if i_enable_swing_filter
+        log.info("Swing Low Confirmation: {0}", isSwingLow)
+        log.info("Swing Strength: {0}", swingLowStrength)
+
+// Detailed PSP Red (Bearish) Signal Logging
+if markRed
+    log.info("Bearish PSP Signal Detected")
+    log.info("Main Chart Symbol: Close {0}, Open {1}", chartSymbolClose, chartSymbolOpen)
+    log.info("Comparison Symbol: Close {0}, Open {1}", compSymbolClose, compSymbolOpen)
+    log.info("Correlation: {0}", correlation)
+
+    // If swing point filter is enabled, log additional details
+    if i_enable_swing_filter
+        log.info("Swing High Confirmation: {0}", isSwingHigh)
+        log.info("Swing Strength: {0}", swingHighStrength)
 
 // Create new bullish PSP zone 
 if markGreen and i_enable_psp_zones
@@ -812,6 +992,30 @@ Drawing(Bull_Line, Bear_Line, Bull_Label, Bear_Label)=>
 // ==========================================
 // =========== PLOTTING ====================
 // ==========================================
+
+// Visual plots for swing point strength if enabled
+var label[] swingLabels = array.new_label()
+if i_visualize_strength and barstate.isconfirmed
+    // Clean up old labels
+    if array.size(swingLabels) > 10
+        oldLabel = array.shift(swingLabels)
+        label.delete(oldLabel)
+    
+    // Add new label for swing high
+    if isSwingHigh
+        strengthText = str.tostring(math.round(swingHighStrength * 10) / 10)
+        swingLabel = label.new(bar_index - i_swing_lookback, high[i_swing_lookback], text="SH\n" + strengthText, color=i_mono_mode ? getMonochromeColor(color.new(color.red, 80), i_mono_bear_brightness): color.new(color.red, 80), textcolor= i_mono_mode ? getMonochromeColor(color.red, i_mono_bull_brightness) : color.red , style=label.style_label_down, size=size.small)
+        array.push(swingLabels, swingLabel)
+    
+    // Add new label for swing low
+    if isSwingLow
+        strengthText = str.tostring(math.round(swingLowStrength * 10) / 10)
+        swingLabel = label.new(bar_index - i_swing_lookback, low[i_swing_lookback], text="SL\n" + strengthText, color=i_mono_mode ? getMonochromeColor(color.new(color.green, 80), i_mono_bull_brightness): color.new(color.green, 80), textcolor= i_mono_mode ? getMonochromeColor(color.green, i_mono_bear_brightness) : color.green , style=label.style_label_up, size=size.small)
+        array.push(swingLabels, swingLabel)
+
+// Plot swing points if enabled
+plotshape(i_show_swing_points and isSwingLow, "Swing Low", shape.triangleup, location.belowbar, i_mono_mode ? getMonochromeColor(color.green, i_mono_bull_brightness) : color.green, offset=-i_swing_lookback, force_overlay = true)
+plotshape(i_show_swing_points and isSwingHigh, "Swing High", shape.triangledown, location.abovebar, i_mono_mode ? getMonochromeColor(color.red, i_mono_bear_brightness) : color.red, offset=-i_swing_lookback, force_overlay = true)
 
 // Adjust opacity for comparison symbol candles
 compBullishColor = i_mono_mode ? getMonochromeColor(compSymbolBullishColor, i_mono_bull_brightness) : color.new(compSymbolBullishColor, 100 - i_comp_opacity)

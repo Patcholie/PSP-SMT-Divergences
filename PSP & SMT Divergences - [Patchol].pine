@@ -75,10 +75,10 @@ g_smt_periods = "███ Fractal Periods"
 n = input.int(2, title="Primary", inline="primary_fractal", group=g_smt_periods)
 enablePrimaryFractal = input.bool(true, "Enable", inline="primary_fractal", group=g_smt_periods)
 
-n2 = input.int(3, title="Secondary", inline="secondary_fractal", group=g_smt_periods)
+n2 = input.int(7, title="Secondary", inline="secondary_fractal", group=g_smt_periods)
 enableSecondaryFractal = input.bool(false, "Enable", inline="secondary_fractal", group=g_smt_periods)
 
-n3 = input.int(4, title="Tertiary", inline="tertiary_fractal", group=g_smt_periods)
+n3 = input.int(14, title="Tertiary", inline="tertiary_fractal", group=g_smt_periods)
 enableTertiaryFractal = input.bool(false, "Enable", inline="tertiary_fractal", group=g_smt_periods)
 
 // Divergence Type Settings
@@ -141,10 +141,13 @@ pspBorderColorBearish = input.color(color.red, "Bearish Border", inline="psp_bor
 
 // Swing Point Filter Settings
 g_psp_swing = "███ Swing Point Filter"
-i_enable_swing_filter = input.bool(false, "Only Show PSP at Swing Points", tooltip="Only show PSP signals that occur at swing points", group=g_psp_swing)
+i_enable_swing_filter = input.bool(false, "Only Show PSP at Swing Points (WORK IN PROGRESSs)", tooltip="Only show PSP signals that occur at swing points", group=g_psp_swing)
 i_swing_lookback = input.int(1, "Swing Point Lookback", minval=1, maxval=5, tooltip="Number of bars to look back for swing point detection", group=g_psp_swing)
-i_swing_threshold = input.float(0.2, "Minimum Swing Threshold (%)", minval=0.0, maxval=5.0, step=0.1, tooltip="Minimum percentage difference required for a valid swing point (0 = no threshold)", group=g_psp_swing)
+i_swing_threshold = input.float(0.1, "Minimum Swing Threshold (%)", minval=0.0, maxval=5.0, step=0.1, tooltip="Minimum percentage difference required for a valid swing point (0 = no threshold)", group=g_psp_swing)
 i_show_swing_points = input.bool(false, "Show Swing Point Markers", tooltip="Display triangle markers at detected swing points", group=g_psp_swing)
+i_bullish_swing_color = input.color(color.green, "Bullish Swing Mark Color", tooltip = "The color of a bullish swing mark (Green by default)" ,inline = "swing_mark_colors", group=g_psp_swing)
+i_bearish_swing_color = input.color(color.red, "Bearish Swing Mark Color", tooltip = "The color of a bearish swing mark (Red by default)",inline = "swing_mark_colors", group=g_psp_swing)
+
 
 // ENHANCED Swing Point Settings
 g_swing_advanced = "███ Advanced Swing Point Settings"
@@ -1014,8 +1017,8 @@ if i_visualize_strength and barstate.isconfirmed
         array.push(swingLabels, swingLabel)
 
 // Plot swing points if enabled
-plotshape(i_show_swing_points and isSwingLow, "Swing Low", shape.triangleup, location.belowbar, i_mono_mode ? getMonochromeColor(color.green, i_mono_bull_brightness) : color.green, offset=-i_swing_lookback, force_overlay = true)
-plotshape(i_show_swing_points and isSwingHigh, "Swing High", shape.triangledown, location.abovebar, i_mono_mode ? getMonochromeColor(color.red, i_mono_bear_brightness) : color.red, offset=-i_swing_lookback, force_overlay = true)
+plotshape(i_show_swing_points and isSwingLow, "Swing Low", shape.triangleup, location.belowbar, i_mono_mode ? getMonochromeColor(i_bullish_swing_color, (i_mono_bull_brightness + 20 > 100 ? 100 : i_mono_bull_brightness + 20)) : i_bullish_swing_color, offset=-i_swing_lookback, force_overlay = true)
+plotshape(i_show_swing_points and isSwingHigh, "Swing High", shape.triangledown, location.abovebar, i_mono_mode ? getMonochromeColor(i_bearish_swing_color, (i_mono_bear_brightness - 20 < 0 ? 0 : i_mono_bear_brightness - 20)) : i_bearish_swing_color, offset=-i_swing_lookback, force_overlay = true)
 
 // Adjust opacity for comparison symbol candles
 compBullishColor = i_mono_mode ? getMonochromeColor(compSymbolBullishColor, i_mono_bull_brightness) : color.new(compSymbolBullishColor, 100 - i_comp_opacity)

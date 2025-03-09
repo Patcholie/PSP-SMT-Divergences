@@ -260,7 +260,7 @@ Precision Swing Points identify when the main symbol and comparison symbol move 
 | **Market Context** | Aligned with overall trend | Against overall trend |
 | **Volume** | High volume on PSP candle | Low volume on PSP candle |
 
-> **TRADING TIP**: PSP signals work best when they occur at key support/resistance levels or after extended moves in one direction.
+> **TRADING TIP**: PSP signals work best when they occur at key support/resistance levels or after extended moves in one direction, Use with P&D Levels To Strengthen the PSP and to validate its impact.
 
 ---
 

@@ -1,4 +1,13 @@
-// SMT Divergences & PSP Indicator
+// Function to extract the base symbol from a full symbol string
+getShortSymbolName(fullSymbol) =>
+    // Find the position of the colon if it exists
+    colonPos = str.pos(fullSymbol, ":")
+    
+    // If colon exists, extract the part after the colon, otherwise use the full symbol
+    result = colonPos > 0 ? str.substring(fullSymbol, colonPos + 1) : fullSymbol
+    
+    // Return the shortened symbol name
+    result// SMT Divergences & PSP Indicator
 // Copyright © 2025 Aviv Shaked. All Rights Reserved.
 // Modified by Aviv Shaked on 3/03/2025 - Added zones to PSP & new issues.
 // Licensed exclusively to Aviv Shaked for personal use only.
@@ -33,7 +42,6 @@
 // ║  • Combine with additional confirmation signals before trading               ║
 // ║  • Consider PSP signals as areas of interest, not exact entry/exit points    ║
 // ║  • Monitor correlation value - signals unreliable when correlation is weak   ║
-// ║  • Enable Swing Point Detection with a low threshold to show correct PSP's   ║
 // ║                                                                              ║
 // ║  OPTIMAL USAGE:                                                              ║
 // ║  • Most effective with highly correlated pairs (ES1/NQ1, sector ETFs)        ║
@@ -51,10 +59,35 @@ indicator("Imbalances: Precision Candles & SMT Divergence - [Patchol]", shorttit
 
 // General Settings Group
 g_general = "General Settings"
-Sym = input.symbol('ES1!', 'Comparison Symbol', group=g_general)
 i_show_correlation = input.bool(true, "Show Symbol Correlation", tooltip="Display correlation between chart symbol and comparison symbol", group=g_general)
 i_correlation_length = input.int(20, "Correlation Length", minval=5, maxval=50, tooltip="Period for correlation calculation", group=g_general)
 i_min_correlation = input.float(0.5, "Minimum Correlation", minval=0, maxval=1, step=0.1, tooltip="Minimum correlation threshold for reliable signals", group=g_general)
+
+// ============================================
+// === MULTI-SYMBOL COMPARISON SETTINGS ======
+// ============================================
+
+g_multi_symbol = "🔄 Multi-Symbol Comparison Settings"
+g_sym1 = "Symbol 1 Settings"
+Sym1 = input.symbol('ES1!', 'Comparison Symbol 1', group=g_sym1)
+i_enable_sym1 = input.bool(true, "Enable Symbol 1", tooltip="Enable or disable comparisons with Symbol 1", group=g_sym1)
+i_sym1_weight = input.float(1.0, "Signal Weight", minval=0.1, maxval=5.0, step=0.1, tooltip="Weight of Symbol 1 signals (higher = more importance)", group=g_sym1)
+
+g_sym2 = "Symbol 2 Settings"
+Sym2 = input.symbol('NQ1!', 'Comparison Symbol 2', group=g_sym2)
+i_enable_sym2 = input.bool(false, "Enable Symbol 2", tooltip="Enable or disable comparisons with Symbol 2", group=g_sym2)
+i_sym2_weight = input.float(1.0, "Signal Weight", minval=0.1, maxval=5.0, step=0.1, tooltip="Weight of Symbol 2 signals (higher = more importance)", group=g_sym2)
+
+g_sym3 = "Symbol 3 Settings"
+Sym3 = input.symbol('YM1!', 'Comparison Symbol 3', group=g_sym3)
+i_enable_sym3 = input.bool(false, "Enable Symbol 3", tooltip="Enable or disable comparisons with Symbol 3", group=g_sym3) 
+i_sym3_weight = input.float(1.0, "Signal Weight", minval=0.1, maxval=5.0, step=0.1, tooltip="Weight of Symbol 3 signals (higher = more importance)", group=g_sym3)
+
+g_multi_options = "Multi-Symbol Options"
+i_signal_mode = input.string("Any", "Signal Generation Mode", options=["Any", "All", "Majority"], tooltip="Any: Signal if any symbol matches, All: Signal only if all symbols match, Majority: Signal if most symbols match", group=g_multi_options)
+i_show_additional_symbols = input.bool(false, "Show Additional Symbols", tooltip="When enabled, additional symbols will be displayed according to Display Mode", group=g_multi_options)
+i_multi_sym_display = input.string("Primary Only", "Display Mode", options=["Primary Only", "All Enabled", "Active Signal"], tooltip="Which comparison symbols to display on the chart", group=g_multi_options)
+i_color_mode = input.string("Unique", "Color Mode", options=["Unique", "Signal Type"], tooltip="Unique: Each symbol has unique colors, Signal Type: Same colors for all symbols based on signal type", group=g_multi_options)
 
 // Display Mode Group
 g_display = "Display Mode"
@@ -139,15 +172,11 @@ i_enable_psp_borders = input.bool(true, "Show PSP Borders", inline="psp_border",
 pspBorderColorBullish = input.color(color.green, "Bullish Border", inline="psp_border_colors", group=g_psp_border)
 pspBorderColorBearish = input.color(color.red, "Bearish Border", inline="psp_border_colors", group=g_psp_border)
 
-// Swing Point Filter Settings
-g_psp_swing = "███ Swing Point Filter"
-i_enable_swing_filter = input.bool(false, "Only Show PSP at Swing Points (WORK IN PROGRESSs)", tooltip="Only show PSP signals that occur at swing points", group=g_psp_swing)
-i_swing_lookback = input.int(1, "Swing Point Lookback", minval=1, maxval=5, tooltip="Number of bars to look back for swing point detection", group=g_psp_swing)
-i_swing_threshold = input.float(0.1, "Minimum Swing Threshold (%)", minval=0.0, maxval=5.0, step=0.1, tooltip="Minimum percentage difference required for a valid swing point (0 = no threshold)", group=g_psp_swing)
+// Swing Point Visualization Settings (Display Only)
+g_psp_swing = "███ Swing Point Visualization"
 i_show_swing_points = input.bool(false, "Show Swing Point Markers", tooltip="Display triangle markers at detected swing points", group=g_psp_swing)
 i_bullish_swing_color = input.color(color.green, "Bullish Swing Mark Color", tooltip = "The color of a bullish swing mark (Green by default)" ,inline = "swing_mark_colors", group=g_psp_swing)
 i_bearish_swing_color = input.color(color.red, "Bearish Swing Mark Color", tooltip = "The color of a bearish swing mark (Red by default)",inline = "swing_mark_colors", group=g_psp_swing)
-
 
 // ENHANCED Swing Point Settings
 g_swing_advanced = "███ Advanced Swing Point Settings"
@@ -158,6 +187,8 @@ i_atr_multiplier = input.float(1.0, "ATR Multiplier", minval=0.5, maxval=3.0, st
 i_atr_length = input.int(14, "ATR Length", minval=5, maxval=50, tooltip="Period for ATR calculation", group=g_swing_advanced)
 i_avoid_overlap = input.bool(true, "Prevent Signal Overlap", tooltip="Prevent swing high and swing low signals from occurring on adjacent bars", group=g_swing_advanced)
 i_visualize_strength = input.bool(false, "Visualize Swing Strength", tooltip="Show swing strength in labels", group=g_swing_advanced)
+i_swing_lookback = input.int(1, "Swing Point Lookback", minval=1, maxval=5, tooltip="Number of bars to look back for swing point detection", group=g_swing_advanced)
+i_swing_threshold = input.float(0.1, "Minimum Swing Threshold (%)", minval=0.0, maxval=5.0, step=0.1, tooltip="Minimum percentage difference required for a valid swing point (0 = no threshold)", group=g_swing_advanced)
 
 // PSP Zone Settings
 g_psp_zone = "███ PSP Zone Settings"
@@ -180,6 +211,17 @@ compSymbolBullishWickColor = input.color(#089981, "Bullish Wick", inline="comp_b
 
 compSymbolBearishColor = input.color(#f23645, "Bearish Body", inline="comp_bear_colors", group=g_comp_colors)
 compSymbolBearishWickColor = input.color(#f23645, "Bearish Wick", inline="comp_bear_colors", group=g_comp_colors)
+
+// Symbol-specific colors (for multi-symbol display)
+g_sym_colors = "███ Symbol-Specific Colors"
+compSymbol1BullishColor = input.color(#089981, "Symbol 1 Bullish", inline="sym1_colors", group=g_sym_colors)
+compSymbol1BearishColor = input.color(#f23645, "Symbol 1 Bearish", inline="sym1_colors", group=g_sym_colors)
+
+compSymbol2BullishColor = input.color(#4CAF50, "Symbol 2 Bullish", inline="sym2_colors", group=g_sym_colors)
+compSymbol2BearishColor = input.color(#FF5722, "Symbol 2 Bearish", inline="sym2_colors", group=g_sym_colors)
+
+compSymbol3BullishColor = input.color(#2196F3, "Symbol 3 Bullish", inline="sym3_colors", group=g_sym_colors)
+compSymbol3BearishColor = input.color(#9C27B0, "Symbol 3 Bearish", inline="sym3_colors", group=g_sym_colors)
 
 // Monochrome Mode Settings
 g_mono = "Monochrome Mode Settings"
@@ -479,50 +521,102 @@ swingLowStrength = isSwingLow ? calculateSwingStrength(false, i_swing_lookback) 
 swingHighStrength = isSwingHigh ? calculateSwingStrength(true, i_swing_lookback) : 0
 
 // ==========================================
-// ===== MAIN LOGIC CODE =================
+// ===== MULTI-SYMBOL DATA RETRIEVAL =======
 // ==========================================
 
 // Current chart timeframe
 currentChartTimeframe = timeframe.period
 
-// Retrieve data for the current chart's symbol and comparison symbol 
-// Using gaps=barmerge.gaps_off to prevent repainting
+// Retrieve data for the current chart's symbol
 chartSymbolClose = close
 chartSymbolOpen = open
 chartSymbolVolume = volume
 
-compSymbolClose = request.security(Sym, currentChartTimeframe, close, gaps=barmerge.gaps_off)
-compSymbolOpen = request.security(Sym, currentChartTimeframe, open, gaps=barmerge.gaps_off)
-compSymbolHigh = request.security(Sym, currentChartTimeframe, high, gaps=barmerge.gaps_off)
-compSymbolLow = request.security(Sym, currentChartTimeframe, low, gaps=barmerge.gaps_off)
-compSymbolVolume = request.security(Sym, currentChartTimeframe, volume, gaps=barmerge.gaps_off)
+// Retrieve data for Symbol 1
+compSymbol1Close = i_enable_sym1 ? request.security(Sym1, currentChartTimeframe, close, gaps=barmerge.gaps_off) : na
+compSymbol1Open = i_enable_sym1 ? request.security(Sym1, currentChartTimeframe, open, gaps=barmerge.gaps_off) : na
+compSymbol1High = i_enable_sym1 ? request.security(Sym1, currentChartTimeframe, high, gaps=barmerge.gaps_off) : na
+compSymbol1Low = i_enable_sym1 ? request.security(Sym1, currentChartTimeframe, low, gaps=barmerge.gaps_off) : na
+compSymbol1Volume = i_enable_sym1 ? request.security(Sym1, currentChartTimeframe, volume, gaps=barmerge.gaps_off) : na
 
-// Calculate correlation between the chart symbol and comparison symbol
-correlation = ta.correlation(close, compSymbolClose, i_correlation_length)
-isCorrelationValid = correlation >= i_min_correlation or correlation <= -i_min_correlation
+// Retrieve data for Symbol 2
+compSymbol2Close = i_enable_sym2 ? request.security(Sym2, currentChartTimeframe, close, gaps=barmerge.gaps_off) : na
+compSymbol2Open = i_enable_sym2 ? request.security(Sym2, currentChartTimeframe, open, gaps=barmerge.gaps_off) : na
+compSymbol2High = i_enable_sym2 ? request.security(Sym2, currentChartTimeframe, high, gaps=barmerge.gaps_off) : na
+compSymbol2Low = i_enable_sym2 ? request.security(Sym2, currentChartTimeframe, low, gaps=barmerge.gaps_off) : na
+compSymbol2Volume = i_enable_sym2 ? request.security(Sym2, currentChartTimeframe, volume, gaps=barmerge.gaps_off) : na
 
-// PSP Conditions
+// Retrieve data for Symbol 3
+compSymbol3Close = i_enable_sym3 ? request.security(Sym3, currentChartTimeframe, close, gaps=barmerge.gaps_off) : na
+compSymbol3Open = i_enable_sym3 ? request.security(Sym3, currentChartTimeframe, open, gaps=barmerge.gaps_off) : na
+compSymbol3High = i_enable_sym3 ? request.security(Sym3, currentChartTimeframe, high, gaps=barmerge.gaps_off) : na
+compSymbol3Low = i_enable_sym3 ? request.security(Sym3, currentChartTimeframe, low, gaps=barmerge.gaps_off) : na
+compSymbol3Volume = i_enable_sym3 ? request.security(Sym3, currentChartTimeframe, volume, gaps=barmerge.gaps_off) : na
+
+// Calculate correlations between the chart symbol and comparison symbols
+correlation1 = i_enable_sym1 ? ta.correlation(close, compSymbol1Close, i_correlation_length) : 0
+correlation2 = i_enable_sym2 ? ta.correlation(close, compSymbol2Close, i_correlation_length) : 0
+correlation3 = i_enable_sym3 ? ta.correlation(close, compSymbol3Close, i_correlation_length) : 0
+
+// Check if correlations are valid
+isCorrelationValid1 = i_enable_sym1 ? (correlation1 >= i_min_correlation or correlation1 <= -i_min_correlation) : false
+isCorrelationValid2 = i_enable_sym2 ? (correlation2 >= i_min_correlation or correlation2 <= -i_min_correlation) : false
+isCorrelationValid3 = i_enable_sym3 ? (correlation3 >= i_min_correlation or correlation3 <= -i_min_correlation) : false
+
+// ==========================================
+// ===== MULTI-SYMBOL PSP DETECTION =======
+// ==========================================
+
+// Check candle directions for main symbol
 isGreenChartSymbol = chartSymbolClose > chartSymbolOpen
 isRedChartSymbol = chartSymbolClose < chartSymbolOpen
-isGreenCompSymbol = compSymbolClose > compSymbolOpen
-isRedCompSymbol = compSymbolClose < compSymbolOpen
 
-// Condition for green and red markings with swing point filtering
-markGreen = enableMarkGreen and isRedCompSymbol and isGreenChartSymbol and 
-          (not i_enable_swing_filter or isSwingLow)
+// Check directions for Symbol 1
+isGreenCompSymbol1 = compSymbol1Close > compSymbol1Open
+isRedCompSymbol1 = compSymbol1Close < compSymbol1Open
 
-markRed = enableMarkRed and isGreenCompSymbol and isRedChartSymbol and 
-         (not i_enable_swing_filter or isSwingHigh)
+// Check directions for Symbol 2
+isGreenCompSymbol2 = compSymbol2Close > compSymbol2Open
+isRedCompSymbol2 = compSymbol2Close < compSymbol2Open
+
+// Check directions for Symbol 3
+isGreenCompSymbol3 = compSymbol3Close > compSymbol3Open
+isRedCompSymbol3 = compSymbol3Close < compSymbol3Open
+
+// Individual PSP signals for each symbol
+markGreen1 = i_enable_sym1 and enableMarkGreen and isRedCompSymbol1 and isGreenChartSymbol
+markRed1 = i_enable_sym1 and enableMarkRed and isGreenCompSymbol1 and isRedChartSymbol
+
+markGreen2 = i_enable_sym2 and enableMarkGreen and isRedCompSymbol2 and isGreenChartSymbol
+markRed2 = i_enable_sym2 and enableMarkRed and isGreenCompSymbol2 and isRedChartSymbol
+
+markGreen3 = i_enable_sym3 and enableMarkGreen and isRedCompSymbol3 and isGreenChartSymbol
+markRed3 = i_enable_sym3 and enableMarkRed and isGreenCompSymbol3 and isRedChartSymbol
+
+// Count the number of active comparison symbols
+activeSymbolCount = (i_enable_sym1 ? 1 : 0) + (i_enable_sym2 ? 1 : 0) + (i_enable_sym3 ? 1 : 0)
+
+// Count the number of bullish and bearish signals
+bullishSignalCount = (markGreen1 ? 1 : 0) + (markGreen2 ? 1 : 0) + (markGreen3 ? 1 : 0)
+bearishSignalCount = (markRed1 ? 1 : 0) + (markRed2 ? 1 : 0) + (markRed3 ? 1 : 0)
+
+// Weighted signal calculation
+weightedBullishSignalCount = (markGreen1 ? i_sym1_weight : 0) + (markGreen2 ? i_sym2_weight : 0) + (markGreen3 ? i_sym3_weight : 0)
+weightedBearishSignalCount = (markRed1 ? i_sym1_weight : 0) + (markRed2 ? i_sym2_weight : 0) + (markRed3 ? i_sym3_weight : 0)
+totalWeights = (i_enable_sym1 ? i_sym1_weight : 0) + (i_enable_sym2 ? i_sym2_weight : 0) + (i_enable_sym3 ? i_sym3_weight : 0)
+weightedMajorityThreshold = totalWeights * 0.5
+
+// Combined PSP signals based on selected mode
+markGreen = activeSymbolCount > 0 and ((i_signal_mode == "Any" and bullishSignalCount > 0) or (i_signal_mode == "All" and bullishSignalCount == activeSymbolCount) or (i_signal_mode == "Majority" and weightedBullishSignalCount > weightedMajorityThreshold))
+markRed = activeSymbolCount > 0 and ((i_signal_mode == "Any" and bearishSignalCount > 0) or (i_signal_mode == "All" and bearishSignalCount == activeSymbolCount) or (i_signal_mode == "Majority" and weightedBearishSignalCount > weightedMajorityThreshold))
 
 // Debug logging for swing points
 if isSwingLow
-    log.info("Swing Low Detected at Bar Index: {0}, Time: {1}, Price: {2}, Strength: {3}", 
-             bar_index, time, low[i_swing_lookback], swingLowStrength)
+    log.info("Swing Low Detected at Bar Index: {0}, Time: {1}, Price: {2}, Strength: {3}", bar_index, time, low[i_swing_lookback], swingLowStrength)
 
 // Debug log for Swing High Points
 if isSwingHigh
-    log.info("Swing High Detected at Bar Index: {0}, Time: {1}, Price: {2}, Strength: {3}", 
-             bar_index, time, high[i_swing_lookback], swingHighStrength)
+    log.info("Swing High Detected at Bar Index: {0}, Time: {1}, Price: {2}, Strength: {3}", bar_index, time, high[i_swing_lookback], swingHighStrength)
 
 // ==========================================
 // ===== PSP ZONE MANAGEMENT ==============
@@ -539,25 +633,23 @@ managePSPBoxes(bearishZoneBoxes, maxPSPBoxes)
 if markGreen
     log.info("Bullish PSP Signal Detected")
     log.info("Main Chart Symbol: Close {0}, Open {1}", chartSymbolClose, chartSymbolOpen)
-    log.info("Comparison Symbol: Close {0}, Open {1}", compSymbolClose, compSymbolOpen)
-    log.info("Correlation: {0}", correlation)
-    
-    // If swing point filter is enabled, log additional details
-    if i_enable_swing_filter
-        log.info("Swing Low Confirmation: {0}", isSwingLow)
-        log.info("Swing Strength: {0}", swingLowStrength)
+    if i_enable_sym1
+        log.info("Symbol 1: Close {0}, Open {1}, Correlation: {2}, Signal: {3}", compSymbol1Close, compSymbol1Open, correlation1, markGreen1 ? "Bullish" : "None")
+    if i_enable_sym2
+        log.info("Symbol 2: Close {0}, Open {1}, Correlation: {2}, Signal: {3}", compSymbol2Close, compSymbol2Open, correlation2, markGreen2 ? "Bullish" : "None")
+    if i_enable_sym3
+        log.info("Symbol 3: Close {0}, Open {1}, Correlation: {2}, Signal: {3}", compSymbol3Close, compSymbol3Open, correlation3, markGreen3 ? "Bullish" : "None")
 
 // Detailed PSP Red (Bearish) Signal Logging
 if markRed
     log.info("Bearish PSP Signal Detected")
     log.info("Main Chart Symbol: Close {0}, Open {1}", chartSymbolClose, chartSymbolOpen)
-    log.info("Comparison Symbol: Close {0}, Open {1}", compSymbolClose, compSymbolOpen)
-    log.info("Correlation: {0}", correlation)
-
-    // If swing point filter is enabled, log additional details
-    if i_enable_swing_filter
-        log.info("Swing High Confirmation: {0}", isSwingHigh)
-        log.info("Swing Strength: {0}", swingHighStrength)
+    if i_enable_sym1
+        log.info("Symbol 1: Close {0}, Open {1}, Correlation: {2}, Signal: {3}", compSymbol1Close, compSymbol1Open, correlation1, markRed1 ? "Bearish" : "None")
+    if i_enable_sym2
+        log.info("Symbol 2: Close {0}, Open {1}, Correlation: {2}, Signal: {3}", compSymbol2Close, compSymbol2Open, correlation2, markRed2 ? "Bearish" : "None")
+    if i_enable_sym3
+        log.info("Symbol 3: Close {0}, Open {1}, Correlation: {2}, Signal: {3}", compSymbol3Close, compSymbol3Open, correlation3, markRed3 ? "Bearish" : "None")
 
 // Create new bullish PSP zone 
 if markGreen and i_enable_psp_zones
@@ -591,9 +683,17 @@ if markRed and i_enable_psp_zones
 pspBullishBorderColor = getMonochromeColor(pspBorderColorBullish, i_mono_bull_brightness)
 pspBearishBorderColor = getMonochromeColor(pspBorderColorBearish, i_mono_bear_brightness)
 
-// SMT Divergence Fractals
-[Open, High, Low, Close] = request.security(Sym, timeframe.period, [open, high, low, close], gaps=barmerge.gaps_off)
-Volume = request.security(Sym, timeframe.period, volume, gaps=barmerge.gaps_off)
+// ==========================================
+// === SMT DIVERGENCE DETECTION ============
+// ==========================================
+
+// Select the primary comparison symbol for SMT divergence analysis
+// We use the first enabled symbol, with priority: Symbol1 > Symbol2 > Symbol3
+primarySymbol = i_enable_sym1 ? Sym1 : (i_enable_sym2 ? Sym2 : (i_enable_sym3 ? Sym3 : Sym1))
+
+// SMT Divergence Fractals for the selected primary symbol
+[Open, High, Low, Close] = request.security(primarySymbol, timeframe.period, [open, high, low, close], gaps=barmerge.gaps_off)
+Volume = request.security(primarySymbol, timeframe.period, volume, gaps=barmerge.gaps_off)
 
 // Primary Fractal
 UpPivot = bool(ta.pivothigh(n,n)) and enablePrimaryFractal
@@ -793,33 +893,81 @@ else
 // === VISUAL COMPONENTS ===================
 // ==========================================
 
-// Determine Comparison Symbol Candle Border Color
-compSymbolBorderColor() =>
-    // Check if PSP conditions are met for the current bar
-    isPSPGreen = isRedCompSymbol and isGreenChartSymbol
-    isPSPRed = isGreenCompSymbol and isRedChartSymbol
+// Determine border colors for Symbol 1
+compSymbol1BorderColor() =>
+    // Check if PSP conditions are met for Symbol 1
+    isPSPGreen1 = isRedCompSymbol1 and isGreenChartSymbol
+    isPSPRed1 = isGreenCompSymbol1 and isRedChartSymbol
+    isPrimarySymbol1 = i_enable_sym1 and not i_enable_sym2 and not i_enable_sym3
     
-    // Apply swing point filter if enabled
-    isPSPGreenWithFilter = isPSPGreen and (not i_enable_swing_filter or isSwingLow)
-    isPSPRedWithFilter = isPSPRed and (not i_enable_swing_filter or isSwingHigh)
-    
-    if enableCompSymbolCandles and i_enable_psp_borders
-        if isPSPGreenWithFilter
-            // In monochrome mode, use contrasting border (opposite brightness)
+    if enableCompSymbolCandles and i_enable_psp_borders and (isPrimarySymbol1 or (i_show_additional_symbols and (i_multi_sym_display == "ALL_ENABLED" or i_multi_sym_display == "ACTIVE_SIGNAL" and (isPSPGreen1 or isPSPRed1))))
+        if isPSPGreen1
             if i_mono_mode
-                // For bullish PSP, use darker border on lighter candle
                 getMonochromeColor(color.white, math.max(10, i_mono_bull_brightness - 50))
             else
                 pspBullishBorderColor
-        else if isPSPRedWithFilter
-            // In monochrome mode, use contrasting border (opposite brightness)
+        else if isPSPRed1
             if i_mono_mode
-                // For bearish PSP, use lighter border on darker candle
                 getMonochromeColor(color.white, math.min(90, i_mono_bear_brightness + 50))
             else
                 pspBearishBorderColor
         else
-            i_mono_mode ? Close >= Open ? getMonochromeColor(compSymbolBullishColor, i_mono_bull_brightness) : getMonochromeColor(compSymbolBearishColor, i_mono_bear_brightness) : Close >= Open ? compSymbolBullishColor : compSymbolBearishColor
+            if i_color_mode == "UNIQUE"
+                i_mono_mode ? compSymbol1Close >= compSymbol1Open ? getMonochromeColor(compSymbol1BullishColor, i_mono_bull_brightness) : getMonochromeColor(compSymbol1BearishColor, i_mono_bear_brightness) : compSymbol1Close >= compSymbol1Open ? compSymbol1BullishColor : compSymbol1BearishColor
+            else
+                i_mono_mode ? Close >= Open ? getMonochromeColor(compSymbolBullishColor, i_mono_bull_brightness) : getMonochromeColor(compSymbolBearishColor, i_mono_bear_brightness) : Close >= Open ? compSymbolBullishColor : compSymbolBearishColor
+    else
+        na
+
+// Determine border colors for Symbol 2
+compSymbol2BorderColor() =>
+    // Check if PSP conditions are met for Symbol 2
+    isPSPGreen2 = isRedCompSymbol2 and isGreenChartSymbol
+    isPSPRed2 = isGreenCompSymbol2 and isRedChartSymbol
+    isPrimarySymbol2 = not i_enable_sym1 and i_enable_sym2 and not i_enable_sym3
+    
+    if enableCompSymbolCandles and i_enable_psp_borders and (isPrimarySymbol2 or (i_show_additional_symbols and (i_multi_sym_display == "ALL_ENABLED" or i_multi_sym_display == "ACTIVE_SIGNAL" and (isPSPGreen2 or isPSPRed2))))
+        if isPSPGreen2
+            if i_mono_mode
+                getMonochromeColor(color.white, math.max(10, i_mono_bull_brightness - 50))
+            else
+                pspBullishBorderColor
+        else if isPSPRed2
+            if i_mono_mode
+                getMonochromeColor(color.white, math.min(90, i_mono_bear_brightness + 50))
+            else
+                pspBearishBorderColor
+        else
+            if i_color_mode == "UNIQUE"
+                i_mono_mode ? compSymbol2Close >= compSymbol2Open ? getMonochromeColor(compSymbol2BullishColor, i_mono_bull_brightness) : getMonochromeColor(compSymbol2BearishColor, i_mono_bear_brightness) : compSymbol2Close >= compSymbol2Open ? compSymbol2BullishColor : compSymbol2BearishColor
+            else
+                i_mono_mode ? Close >= Open ? getMonochromeColor(compSymbolBullishColor, i_mono_bull_brightness) : getMonochromeColor(compSymbolBearishColor, i_mono_bear_brightness) : Close >= Open ? compSymbolBullishColor : compSymbolBearishColor
+    else
+        na
+
+// Determine border colors for Symbol 3
+compSymbol3BorderColor() =>
+    // Check if PSP conditions are met for Symbol 3
+    isPSPGreen3 = isRedCompSymbol3 and isGreenChartSymbol
+    isPSPRed3 = isGreenCompSymbol3 and isRedChartSymbol
+    isPrimarySymbol3 = not i_enable_sym1 and not i_enable_sym2 and i_enable_sym3
+    
+    if enableCompSymbolCandles and i_enable_psp_borders and (isPrimarySymbol3 or (i_show_additional_symbols and (i_multi_sym_display == "ALL_ENABLED" or i_multi_sym_display == "ACTIVE_SIGNAL" and (isPSPGreen3 or isPSPRed3))))
+        if isPSPGreen3
+            if i_mono_mode
+                getMonochromeColor(color.white, math.max(10, i_mono_bull_brightness - 50))
+            else
+                pspBullishBorderColor
+        else if isPSPRed3
+            if i_mono_mode
+                getMonochromeColor(color.white, math.min(90, i_mono_bear_brightness + 50))
+            else
+                pspBearishBorderColor
+        else
+            if i_color_mode == "UNIQUE"
+                i_mono_mode ? compSymbol3Close >= compSymbol3Open ? getMonochromeColor(compSymbol3BullishColor, i_mono_bull_brightness) : getMonochromeColor(compSymbol3BearishColor, i_mono_bear_brightness) : compSymbol3Close >= compSymbol3Open ? compSymbol3BullishColor : compSymbol3BearishColor
+            else
+                i_mono_mode ? Close >= Open ? getMonochromeColor(compSymbolBullishColor, i_mono_bull_brightness) : getMonochromeColor(compSymbolBearishColor, i_mono_bear_brightness) : Close >= Open ? compSymbolBullishColor : compSymbolBearishColor
     else
         na
 
@@ -861,8 +1009,8 @@ Drawing(Bull_Line, Bear_Line, Bull_Label, Bear_Label)=>
     // Line style from settings
     lineStyle = getLineStyle()
 
-    // Only process if correlation is valid
-    if isCorrelationValid
+    // Only process if at least one correlation is valid
+    if isCorrelationValid1 or isCorrelationValid2 or isCorrelationValid3
         // Primary Fractal Drawing
         if Last_Bullish_Divergece and Bull_Line
             primaryBullColor = getBullishDivergenceColor(1)
@@ -877,7 +1025,7 @@ Drawing(Bull_Line, Bear_Line, Bull_Label, Bear_Label)=>
                 indicatorLine = line.new(Low_Per_Bar, Low_Per_Hist, Low_Last_Bar, Low_Last_Hist, color=primaryBullColor, width=i_line_width, style=lineStyle)
                 array.push(bullishIndicatorLines, indicatorLine)
             
-            // Add label if enabled
+    // Add label if enabled
             if Bull_Label
                 label.new(Low_Last_Bar, Low_Last_Hist, "BullDiv\nRegular", color=color.new(primaryBullColor, 50), textcolor=primaryBullColor, style=label.style_label_down, size=size.small)
             
@@ -1007,13 +1155,13 @@ if i_visualize_strength and barstate.isconfirmed
     // Add new label for swing high
     if isSwingHigh
         strengthText = str.tostring(math.round(swingHighStrength * 10) / 10)
-        swingLabel = label.new(bar_index - i_swing_lookback, high[i_swing_lookback], text="SH\n" + strengthText, color=i_mono_mode ? getMonochromeColor(color.new(color.red, 80), i_mono_bear_brightness): color.new(color.red, 80), textcolor= i_mono_mode ? getMonochromeColor(color.red, i_mono_bull_brightness) : color.red , style=label.style_label_down, size=size.small)
+        swingLabel = label.new(bar_index - i_swing_lookback, high[i_swing_lookback], text="SH\n" + strengthText, color=i_mono_mode ? getMonochromeColor(color.new(color.red, 80), i_mono_bear_brightness): color.new(color.red, 80), textcolor= i_mono_mode ? getMonochromeColor(color.red, i_mono_bull_brightness) : color.red, style=label.style_label_down, size=size.small)
         array.push(swingLabels, swingLabel)
     
     // Add new label for swing low
     if isSwingLow
         strengthText = str.tostring(math.round(swingLowStrength * 10) / 10)
-        swingLabel = label.new(bar_index - i_swing_lookback, low[i_swing_lookback], text="SL\n" + strengthText, color=i_mono_mode ? getMonochromeColor(color.new(color.green, 80), i_mono_bull_brightness): color.new(color.green, 80), textcolor= i_mono_mode ? getMonochromeColor(color.green, i_mono_bear_brightness) : color.green , style=label.style_label_up, size=size.small)
+        swingLabel = label.new(bar_index - i_swing_lookback, low[i_swing_lookback], text="SL\n" + strengthText, color=i_mono_mode ? getMonochromeColor(color.new(color.green, 80), i_mono_bull_brightness): color.new(color.green, 80), textcolor= i_mono_mode ? getMonochromeColor(color.green, i_mono_bear_brightness) : color.green, style=label.style_label_up, size=size.small)
         array.push(swingLabels, swingLabel)
 
 // Plot swing points if enabled
@@ -1026,8 +1174,33 @@ compBearishColor = i_mono_mode ? getMonochromeColor(compSymbolBearishColor, i_mo
 compBullishWickColor = i_mono_mode ? getMonochromeColor(compSymbolBullishWickColor, i_mono_bull_brightness) : color.new(compSymbolBullishWickColor, 100 - i_comp_opacity)
 compBearishWickColor = i_mono_mode ? getMonochromeColor(compSymbolBearishWickColor, i_mono_bear_brightness) : color.new(compSymbolBearishWickColor, 100 - i_comp_opacity)
 
-// Plot candlesticks for comparison symbol
-plotcandle(Open, High, Low, Close, color=enableCompSymbolCandles ? (Close >= Open ? compBullishColor : compBearishColor) : na, wickcolor=enableCompSymbolCandles ? (Close >= Open ? compBullishWickColor : compBearishWickColor) : na, bordercolor=compSymbolBorderColor())
+// Symbol-specific colors
+compSymbol1BullishColorFinal = i_color_mode == "Unique" ? (i_mono_mode ? getMonochromeColor(compSymbol1BullishColor, i_mono_bull_brightness) : color.new(compSymbol1BullishColor, 100 - i_comp_opacity)) : compBullishColor
+compSymbol1BearishColorFinal = i_color_mode == "Unique" ? (i_mono_mode ? getMonochromeColor(compSymbol1BearishColor, i_mono_bear_brightness) : color.new(compSymbol1BearishColor, 100 - i_comp_opacity)) : compBearishColor
+compSymbol2BullishColorFinal = i_color_mode == "Unique" ? (i_mono_mode ? getMonochromeColor(compSymbol2BullishColor, i_mono_bull_brightness) : color.new(compSymbol2BullishColor, 100 - i_comp_opacity)) : compBullishColor
+compSymbol2BearishColorFinal = i_color_mode == "Unique" ? (i_mono_mode ? getMonochromeColor(compSymbol2BearishColor, i_mono_bear_brightness) : color.new(compSymbol2BearishColor, 100 - i_comp_opacity)) : compBearishColor
+compSymbol3BullishColorFinal = i_color_mode == "Unique" ? (i_mono_mode ? getMonochromeColor(compSymbol3BullishColor, i_mono_bull_brightness) : color.new(compSymbol3BullishColor, 100 - i_comp_opacity)) : compBullishColor
+compSymbol3BearishColorFinal = i_color_mode == "Unique" ? (i_mono_mode ? getMonochromeColor(compSymbol3BearishColor, i_mono_bear_brightness) : color.new(compSymbol3BearishColor, 100 - i_comp_opacity)) : compBearishColor
+
+// Define plot conditions based on display mode setting
+isPrimarySymbol1 = i_enable_sym1  // First enabled symbol is always primary
+isPrimarySymbol2 = not i_enable_sym1 and i_enable_sym2  // Symbol 2 is primary only if Symbol 1 is not enabled
+isPrimarySymbol3 = not i_enable_sym1 and not i_enable_sym2 and i_enable_sym3  // Symbol 3 is primary only if Symbol 1 and 2 are not enabled
+
+shouldPlotSymbol1 = enableCompSymbolCandles and i_enable_sym1 and (isPrimarySymbol1 or (i_show_additional_symbols and (i_multi_sym_display == "All Enabled" or i_multi_sym_display == "Active Signal" and (markGreen1 or markRed1))))
+shouldPlotSymbol2 = enableCompSymbolCandles and i_enable_sym2 and (isPrimarySymbol2 or (i_show_additional_symbols and (i_multi_sym_display == "All Enabled" or i_multi_sym_display == "Active Signal" and (markGreen2 or markRed2))))
+shouldPlotSymbol3 = enableCompSymbolCandles and i_enable_sym3 and (isPrimarySymbol3 or (i_show_additional_symbols and (i_multi_sym_display == "All Enabled" or i_multi_sym_display == "Active Signal" and (markGreen3 or markRed3))))
+
+// Plot candlesticks for comparison symbols
+plotcandle(shouldPlotSymbol1 ? compSymbol1Open : na, shouldPlotSymbol1 ? compSymbol1High : na, shouldPlotSymbol1 ? compSymbol1Low : na, shouldPlotSymbol1 ? compSymbol1Close : na, title="Symbol 1", color=compSymbol1Close >= compSymbol1Open ? compSymbol1BullishColorFinal : compSymbol1BearishColorFinal, wickcolor=compSymbol1Close >= compSymbol1Open ? compSymbol1BullishColorFinal : compSymbol1BearishColorFinal, bordercolor=compSymbol1BorderColor())
+
+// Adjust offset for Symbol 2 (if needed for clarity)
+symbol2Offset = 0  // can be adjusted if needed
+plotcandle(shouldPlotSymbol2 ? compSymbol2Open : na, shouldPlotSymbol2 ? compSymbol2High : na, shouldPlotSymbol2 ? compSymbol2Low : na, shouldPlotSymbol2 ? compSymbol2Close : na, title="Symbol 2", color=compSymbol2Close >= compSymbol2Open ? compSymbol2BullishColorFinal : compSymbol2BearishColorFinal, wickcolor=compSymbol2Close >= compSymbol2Open ? compSymbol2BullishColorFinal : compSymbol2BearishColorFinal, bordercolor=compSymbol2BorderColor())
+
+// Adjust offset for Symbol 3 (if needed for clarity)
+symbol3Offset = 0  // can be adjusted if needed
+plotcandle(shouldPlotSymbol3 ? compSymbol3Open : na, shouldPlotSymbol3 ? compSymbol3High : na, shouldPlotSymbol3 ? compSymbol3Low : na, shouldPlotSymbol3 ? compSymbol3Close : na, title="Symbol 3", color=compSymbol3Close >= compSymbol3Open ? compSymbol3BullishColorFinal : compSymbol3BearishColorFinal, wickcolor=compSymbol3Close >= compSymbol3Open ? compSymbol3BullishColorFinal : compSymbol3BearishColorFinal, bordercolor=compSymbol3BorderColor())
 
 // Plot border colors for main chart
 barcolor(mainChartBorderColor(), title="Main Chart Border Highlight")
@@ -1035,9 +1208,62 @@ barcolor(mainChartBorderColor(), title="Main Chart Border Highlight")
 // Draw all divergence lines
 Drawing(Bull_Line, Bear_Line, Bull_Label, Bear_Label)
 
-// Display correlation information
-var correlationTable = table.new(position.top_right, 1, 2, bgcolor=color.new(color.black, 90))
+// Display correlation information for each enabled symbol
+var table correlationTable = table.new(position.top_right, 3, 5, bgcolor=color.new(color.black, 90))  // Increased to 5 rows to handle all cases
+
 if barstate.islast and i_show_correlation
-    correlationColor = correlation >= i_min_correlation ? color.green : (correlation <= -i_min_correlation ? color.red : color.gray)
-    table.cell(correlationTable, 0, 0, "Symbol Correlation", bgcolor=color.new(color.black, 90), text_color=color.white)
-    table.cell(correlationTable, 0, 1, str.tostring(math.round(correlation * 100) / 100), bgcolor=color.new(color.black, 90), text_color=correlationColor)
+    // Clear old table content
+    table.clear(correlationTable, 0, 0, 2, 4)  // Clear all 5 rows (0-4)
+    
+    // Table header
+    table.cell(correlationTable, 0, 0, "Symbol", bgcolor=color.new(color.black, 90), text_color=color.white)
+    table.cell(correlationTable, 1, 0, "Correlation", bgcolor=color.new(color.black, 90), text_color=color.white)
+    table.cell(correlationTable, 2, 0, "Signal", bgcolor=color.new(color.black, 90), text_color=color.white)
+    
+    // Row counter for inserting correlation data
+    rowIndex = 1
+    
+    // Symbol 1 correlation
+    if i_enable_sym1
+        correlationColor1 = correlation1 >= i_min_correlation ? color.green : (correlation1 <= -i_min_correlation ? color.red : color.gray)
+        signalText1 = markGreen1 ? "Bullish" : (markRed1 ? "Bearish" : "-")
+        signalColor1 = markGreen1 ? color.green : (markRed1 ? color.red : color.gray)
+        
+        table.cell(correlationTable, 0, rowIndex, getShortSymbolName(Sym1), bgcolor=color.new(color.black, 90), text_color=color.white)
+        table.cell(correlationTable, 1, rowIndex, str.tostring(math.round(correlation1 * 100) / 100), bgcolor=color.new(color.black, 90), text_color=correlationColor1)
+        table.cell(correlationTable, 2, rowIndex, signalText1, bgcolor=color.new(color.black, 90), text_color=signalColor1)
+        
+        rowIndex += 1
+    
+    // Symbol 2 correlation
+    if i_enable_sym2
+        correlationColor2 = correlation2 >= i_min_correlation ? color.green : (correlation2 <= -i_min_correlation ? color.red : color.gray)
+        signalText2 = markGreen2 ? "Bullish" : (markRed2 ? "Bearish" : "-")
+        signalColor2 = markGreen2 ? color.green : (markRed2 ? color.red : color.gray)
+        
+        table.cell(correlationTable, 0, rowIndex, getShortSymbolName(Sym2), bgcolor=color.new(color.black, 90), text_color=color.white)
+        table.cell(correlationTable, 1, rowIndex, str.tostring(math.round(correlation2 * 100) / 100), bgcolor=color.new(color.black, 90), text_color=correlationColor2)
+        table.cell(correlationTable, 2, rowIndex, signalText2, bgcolor=color.new(color.black, 90), text_color=signalColor2)
+        
+        rowIndex += 1
+    
+    // Symbol 3 correlation
+    if i_enable_sym3
+        correlationColor3 = correlation3 >= i_min_correlation ? color.green : (correlation3 <= -i_min_correlation ? color.red : color.gray)
+        signalText3 = markGreen3 ? "Bullish" : (markRed3 ? "Bearish" : "-")
+        signalColor3 = markGreen3 ? color.green : (markRed3 ? color.red : color.gray)
+        
+        table.cell(correlationTable, 0, rowIndex, getShortSymbolName(Sym3), bgcolor=color.new(color.black, 90), text_color=color.white)
+        table.cell(correlationTable, 1, rowIndex, str.tostring(math.round(correlation3 * 100) / 100), bgcolor=color.new(color.black, 90), text_color=correlationColor3)
+        table.cell(correlationTable, 2, rowIndex, signalText3, bgcolor=color.new(color.black, 90), text_color=signalColor3)
+        
+        rowIndex += 1
+    
+    // Combined signals row
+    if activeSymbolCount > 1
+        combinedSignalText = markGreen ? "Bullish" : (markRed ? "Bearish" : "-")
+        combinedSignalColor = markGreen ? color.green : (markRed ? color.red : color.gray)
+        
+        table.cell(correlationTable, 0, rowIndex, "Combined", bgcolor=color.new(color.black, 90), text_color=color.white)
+        table.cell(correlationTable, 1, rowIndex, i_signal_mode, bgcolor=color.new(color.black, 90), text_color=color.white)
+        table.cell(correlationTable, 2, rowIndex, combinedSignalText, bgcolor=color.new(color.black, 90), text_color=combinedSignalColor)

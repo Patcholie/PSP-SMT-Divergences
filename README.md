@@ -48,8 +48,12 @@ The Precision Candles & SMT Divergence indicator is an advanced technical analys
 
 1. **PSP (Precision Swing Points)**: 
    - Detects when the main chart symbol and a comparison symbol move in opposite directions
-   - Provides enhanced swing point filtering
+   - Will Provide enhanced swing point filtering ( Currently can show swing points )
    - Reveals relative market strength and momentum
+   - Use in relation to P&D levels.
+
+
+
 
 2. **SMT Divergence**: 
    - Identifies divergences between price action and technical indicators

@@ -194,5 +194,3 @@ The indicator demonstrates sophisticated technical analysis capabilities with se
 4. Contextual market understanding
 
 Performance optimization remains a secondary consideration, to be addressed through gradual, intelligent refinement.
-
-Would you like a detailed discussion on implementing any of these recommended enhancements?

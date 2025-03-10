@@ -1,15 +1,7 @@
-// Function to extract the base symbol from a full symbol string
-getShortSymbolName(fullSymbol) =>
-    // Find the position of the colon if it exists
-    colonPos = str.pos(fullSymbol, ":")
     
-    // If colon exists, extract the part after the colon, otherwise use the full symbol
-    result = colonPos > 0 ? str.substring(fullSymbol, colonPos + 1) : fullSymbol
-    
-    // Return the shortened symbol name
-    result// SMT Divergences & PSP Indicator
+// SMT Divergences & PSP Indicator
 // Copyright © 2025 Aviv Shaked. All Rights Reserved.
-// Modified by Aviv Shaked on 3/03/2025 - Added zones to PSP & new issues.
+// Modified by Aviv Shaked on 9/03/2025 - Removed Show PSP At Swing Points & Added Multiple Symbols Filteration
 // Licensed exclusively to Aviv Shaked for personal use only.
 // REDISTRIBUTION IN ANY FORM IS STRICTLY PROHIBITED.
 // This software may only be obtained directly from Aviv Shaked.
@@ -113,6 +105,13 @@ enableSecondaryFractal = input.bool(false, "Enable", inline="secondary_fractal",
 
 n3 = input.int(14, title="Tertiary", inline="tertiary_fractal", group=g_smt_periods)
 enableTertiaryFractal = input.bool(false, "Enable", inline="tertiary_fractal", group=g_smt_periods)
+
+// Added Multi-Symbol SMT Section
+g_smt_multi = "███ Multi-Symbol Divergence"
+i_multi_symbol_smt = input.bool(false, "Show SMT for All Symbols", tooltip="When enabled, shows divergences for all enabled comparison symbols instead of just the primary symbol", group=g_smt_multi)
+i_multi_smt_labels = input.bool(true, "Show Symbol Labels", tooltip="Display which symbol each divergence belongs to", group=g_smt_multi)
+i_multi_smt_color_mode = input.string("Default", "Multi-SMT Color Mode", options=["Default", "Symbol-Based"], tooltip="Default: Use regular divergence colors, Symbol-Based: Use symbol-specific colors", group=g_smt_multi)
+
 
 // Divergence Type Settings
 g_div_types = "███ Divergence Types"
@@ -235,6 +234,18 @@ var box[] bearishZoneBoxes = array.new_box(0)
 // ==========================================
 // ===== HELPER FUNCTIONS =================
 // ==========================================
+
+// Function to extract the base symbol from a full symbol string
+getShortSymbolName(fullSymbol) =>
+    // Find the position of the colon if it exists
+    colonPos = str.pos(fullSymbol, ":")
+    
+    // If colon exists, extract the part after the colon, otherwise use the full symbol
+    result = colonPos > 0 ? str.substring(fullSymbol, colonPos + 1) : fullSymbol
+    
+    // Return the shortened symbol name
+    result
+
 
 // Calculate timeframe-specific bar lookback values
 calcTimeframeAdaptiveValues() =>
@@ -1004,141 +1015,313 @@ manageLinesArray(line[] arr) =>
             oldLine = array.shift(arr)
             line.delete(oldLine)
 
-// Enhanced Divergence Drawing Function
-Drawing(Bull_Line, Bear_Line, Bull_Label, Bear_Label)=>
-    // Line style from settings
+processMultiSymbolDivergence(symbolName, symbolHigh, symbolLow, symbolClose, symbolVolume, fractalPeriod, 
+                             bullColor, bearColor, symbolIndex) =>
+    upPivot = bool(ta.pivothigh(fractalPeriod, fractalPeriod))
+    downPivot = bool(ta.pivotlow(fractalPeriod, fractalPeriod))
+    
+    // Bearish divergence data
+    highLastPrice = ta.valuewhen(upPivot, high[fractalPeriod], 0)  // Chart's high
+    highPerPrice = ta.valuewhen(upPivot, high[fractalPeriod], 1)
+    highLastHist = ta.valuewhen(upPivot, symbolHigh[fractalPeriod], 0)  // Symbol's high for comparison
+    highPerHist = ta.valuewhen(upPivot, symbolHigh[fractalPeriod], 1)
+    highLastBar = ta.valuewhen(upPivot, bar_index[fractalPeriod], 0)
+    highPerBar = ta.valuewhen(upPivot, bar_index[fractalPeriod], 1)
+    highLastVol = ta.valuewhen(upPivot, symbolVolume[fractalPeriod], 0)
+    highPerVol = ta.valuewhen(upPivot, symbolVolume[fractalPeriod], 1)
+    timeConditionBear = (highLastBar + lookbackBars) > bar_index
+    
+    // Bullish divergence data
+    lowLastPrice = ta.valuewhen(downPivot, low[fractalPeriod], 0)  // Chart's low
+    lowPerPrice = ta.valuewhen(downPivot, low[fractalPeriod], 1)
+    lowLastHist = ta.valuewhen(downPivot, symbolLow[fractalPeriod], 0)  // Symbol's low for comparison
+    lowPerHist = ta.valuewhen(downPivot, symbolLow[fractalPeriod], 1)
+    lowLastBar = ta.valuewhen(downPivot, bar_index[fractalPeriod], 0)
+    lowPerBar = ta.valuewhen(downPivot, bar_index[fractalPeriod], 1)
+    lowLastVol = ta.valuewhen(downPivot, symbolVolume[fractalPeriod], 0)
+    lowPerVol = ta.valuewhen(downPivot, symbolVolume[fractalPeriod], 1)
+    timeConditionBull = (lowLastBar + lookbackBars) > bar_index
+    
+    divFound = false
     lineStyle = getLineStyle()
+    
+    // Detect bearish divergence
+    if highLastHist > 0 and highPerHist > 0 and timeConditionBear and (highLastBar - highPerBar) < maxGapBars
+        volumeCheck = i_use_volume_filter ? highLastVol > highPerVol : true
+        
+        regularDiv = i_regular_div and highLastPrice > highPerPrice and highLastHist < highPerHist and volumeCheck
+        hiddenDiv = i_hidden_div and highLastPrice < highPerPrice and highLastHist > highPerHist and volumeCheck
+        
+        isStrong = isDivergenceStrong(highLastPrice, highPerPrice, highLastHist, highPerHist)
+        
+        bearishDiv = (regularDiv or hiddenDiv) and isStrong
+        
+        if bearishDiv and Bear_Line
+            divFound := true
+            
+            // Price chart line on main chart
+            if i_show_on_main
+                priceLine = line.new(highPerBar, high[bar_index - highPerBar], highLastBar, high[bar_index - highLastBar], 
+                              color=bearColor, width=i_line_width, style=lineStyle, force_overlay=true)
+                array.push(bearishLines, priceLine)
+            
+            // Optional indicator line (could enable if needed)
+            if i_show_on_indicator
+                indicatorLine = line.new(highPerBar, highPerHist, highLastBar, highLastHist, 
+                                 color=bearColor, width=i_line_width, style=lineStyle)
+                array.push(bearishIndicatorLines, indicatorLine)
+            
+            // Add label if enabled
+            if Bear_Label
+                divType = regularDiv ? "Regular" : "Hidden"
+                labelText = i_multi_smt_labels ? symbolName + "\nBearDiv\n" + divType : "BearDiv\n" + divType
+                label.new(highLastBar, highLastHist, labelText, 
+                     color=color.new(bearColor, 50), textcolor=bearColor, 
+                     style=label.style_label_up, size=size.small)
+    
+    // Detect bullish divergence
+    if lowLastHist > 0 and lowPerHist > 0 and timeConditionBull and (lowLastBar - lowPerBar) < maxGapBars
+        volumeCheck = i_use_volume_filter ? lowLastVol > lowPerVol : true
+        
+        regularDiv = i_regular_div and lowLastPrice < lowPerPrice and lowLastHist > lowPerHist and volumeCheck
+        hiddenDiv = i_hidden_div and lowLastPrice > lowPerPrice and lowLastHist < lowPerHist and volumeCheck
+        
+        isStrong = isDivergenceStrong(lowLastPrice, lowPerPrice, lowLastHist, lowPerHist)
+        
+        bullishDiv = (regularDiv or hiddenDiv) and isStrong
+        
+        if bullishDiv and Bull_Line
+            divFound := true
+            
+            // Price chart line on main chart
+            if i_show_on_main
+                priceLine = line.new(lowPerBar, low[bar_index - lowPerBar], lowLastBar, low[bar_index - lowLastBar], 
+                              color=bullColor, width=i_line_width, style=lineStyle, force_overlay=true)
+                array.push(bullishLines, priceLine)
+            
+            // Optional indicator line
+            if i_show_on_indicator
+                indicatorLine = line.new(lowPerBar, lowPerHist, lowLastBar, lowLastHist, 
+                                 color=bullColor, width=i_line_width, style=lineStyle)
+                array.push(bullishIndicatorLines, indicatorLine)
+            
+            // Add label if enabled
+            if Bull_Label
+                divType = regularDiv ? "Regular" : "Hidden"
+                labelText = i_multi_smt_labels ? symbolName + "\nBullDiv\n" + divType : "BullDiv\n" + divType
+                label.new(lowLastBar, lowLastHist, labelText, 
+                     color=color.new(bullColor, 50), textcolor=bullColor, 
+                     style=label.style_label_down, size=size.small)
+    
+    divFound
 
+
+// Enhanced Divergence Drawing Function with multi-symbol support
+Drawing(Bull_Line, Bear_Line, Bull_Label, Bear_Label)=>
     // Only process if at least one correlation is valid
     if isCorrelationValid1 or isCorrelationValid2 or isCorrelationValid3
-        // Primary Fractal Drawing
-        if Last_Bullish_Divergece and Bull_Line
-            primaryBullColor = getBullishDivergenceColor(1)
+        if not i_multi_symbol_smt
+            // Original single-symbol divergence detection
+            // Primary Fractal Drawing
+            if Last_Bullish_Divergece and Bull_Line
+                primaryBullColor = getBullishDivergenceColor(1)
+                
+                // Price chart line on main chart
+                if i_show_on_main
+                    priceLine = line.new(Low_Per_Bar, low[bar_index - Low_Per_Bar], Low_Last_Bar, low[bar_index - Low_Last_Bar], color=primaryBullColor, width=i_line_width, style=getLineStyle(), force_overlay=true)
+                    array.push(bullishLines, priceLine)
+                
+                // Indicator line on indicator panel
+                if i_show_on_indicator
+                    indicatorLine = line.new(Low_Per_Bar, Low_Per_Hist, Low_Last_Bar, Low_Last_Hist, color=primaryBullColor, width=i_line_width, style=getLineStyle())
+                    array.push(bullishIndicatorLines, indicatorLine)
+                
+                // Add label if enabled
+                if Bull_Label
+                    label.new(Low_Last_Bar, Low_Last_Hist, "BullDiv\nRegular", color=color.new(primaryBullColor, 50), textcolor=primaryBullColor, style=label.style_label_down, size=size.small)
+                
+                // Manage lines array
+                manageLinesArray(bullishLines)
+                manageLinesArray(bullishIndicatorLines)
+          
+            if Last_Bearish_Divergece and Bear_Line
+                primaryBearColor = getBearishDivergenceColor(1)
+                
+                // Price chart line on main chart
+                if i_show_on_main
+                    priceLine = line.new(High_Per_Bar, high[bar_index - High_Per_Bar], High_Last_Bar, high[bar_index - High_Last_Bar], color=primaryBearColor, width=i_line_width, style=getLineStyle(), force_overlay=true)
+                    array.push(bearishLines, priceLine)
+                
+                // Indicator line on indicator panel
+                if i_show_on_indicator
+                    indicatorLine = line.new(High_Per_Bar, High_Per_Hist, High_Last_Bar, High_Last_Hist, color=primaryBearColor, width=i_line_width, style=getLineStyle())
+                    array.push(bearishIndicatorLines, indicatorLine)
+                
+                // Add label if enabled
+                if Bear_Label
+                    label.new(High_Last_Bar, High_Last_Hist, "BearDiv\nRegular", color=color.new(primaryBearColor, 50), textcolor=primaryBearColor, style=label.style_label_up, size=size.small)
+                
+                // Manage lines array
+                manageLinesArray(bearishLines)
+                manageLinesArray(bearishIndicatorLines)
+        
+            // Secondary Fractal Drawing
+            if Last_Bullish_Divergece2 and Bull_Line
+                secondaryBullColor = getBullishDivergenceColor(2)
+                
+                // Price chart line on main chart
+                if i_show_on_main
+                    priceLine = line.new(Low_Per_Bar2, low[bar_index - Low_Per_Bar2], Low_Last_Bar2, low[bar_index - Low_Last_Bar2], color=secondaryBullColor, width=i_line_width, style=getLineStyle(), force_overlay=true)
+                    array.push(bullishLines, priceLine)
+                
+                // Indicator line on indicator panel
+                if i_show_on_indicator
+                    indicatorLine = line.new(Low_Per_Bar2, Low_Per_Hist2, Low_Last_Bar2, Low_Last_Hist2, color=secondaryBullColor, width=i_line_width, style=getLineStyle())
+                    array.push(bullishIndicatorLines, indicatorLine)
+                
+                // Add label if enabled
+                if Bull_Label
+                    label.new(Low_Last_Bar2, Low_Last_Hist2, "BullDiv\nSecondary", color=color.new(secondaryBullColor, 50), textcolor=secondaryBullColor, style=label.style_label_down, size=size.small)
+                
+                // Manage lines array
+                manageLinesArray(bullishLines)
+                manageLinesArray(bullishIndicatorLines)
+          
+            if Last_Bearish_Divergece2 and Bear_Line
+                secondaryBearColor = getBearishDivergenceColor(2)
+                
+                // Price chart line on main chart
+                if i_show_on_main
+                    priceLine = line.new(High_Per_Bar2, high[bar_index - High_Per_Bar2], High_Last_Bar2, high[bar_index - High_Last_Bar2], color=secondaryBearColor, width=i_line_width, style=getLineStyle(), force_overlay=true)
+                    array.push(bearishLines, priceLine)
+                
+                // Indicator line on indicator panel
+                if i_show_on_indicator
+                    indicatorLine = line.new(High_Per_Bar2, High_Per_Hist2, High_Last_Bar2, High_Last_Hist2, color=secondaryBearColor, width=i_line_width, style=getLineStyle())
+                    array.push(bearishIndicatorLines, indicatorLine)
+                
+                // Add label if enabled
+                if Bear_Label
+                    label.new(High_Last_Bar2, High_Last_Hist2, "BearDiv\nSecondary", color=color.new(secondaryBearColor, 50), textcolor=secondaryBearColor, style=label.style_label_up, size=size.small)
+                
+                // Manage lines array
+                manageLinesArray(bearishLines)
+                manageLinesArray(bearishIndicatorLines)
+        
+            // Tertiary Fractal Drawing
+            if Last_Bullish_Divergece3 and Bull_Line
+                tertiaryBullColor = getBullishDivergenceColor(3)
+                
+                // Price chart line on main chart
+                if i_show_on_main
+                    priceLine = line.new(Low_Per_Bar3, low[bar_index - Low_Per_Bar3], Low_Last_Bar3, low[bar_index - Low_Last_Bar3], color=tertiaryBullColor, width=i_line_width, style=getLineStyle(), force_overlay=true)
+                    array.push(bullishLines, priceLine)
+                
+                // Indicator line on indicator panel
+                if i_show_on_indicator
+                    indicatorLine = line.new(Low_Per_Bar3, Low_Per_Hist3, Low_Last_Bar3, Low_Last_Hist3, color=tertiaryBullColor, width=i_line_width, style=getLineStyle())
+                    array.push(bullishIndicatorLines, indicatorLine)
+                
+                // Add label if enabled
+                if Bull_Label
+                    label.new(Low_Last_Bar3, Low_Last_Hist3, "BullDiv\nTertiary", color=color.new(tertiaryBullColor, 50), textcolor=tertiaryBullColor, style=label.style_label_down, size=size.small)
+                
+                // Manage lines array
+                manageLinesArray(bullishLines)
+                manageLinesArray(bullishIndicatorLines)
+          
+            if Last_Bearish_Divergece3 and Bear_Line
+                tertiaryBearColor = getBearishDivergenceColor(3)
+                
+                // Price chart line on main chart
+                if i_show_on_main
+                    priceLine = line.new(High_Per_Bar3, high[bar_index - High_Per_Bar3], High_Last_Bar3, high[bar_index - High_Last_Bar3], color=tertiaryBearColor, width=i_line_width, style=getLineStyle(), force_overlay=true)
+                    array.push(bearishLines, priceLine)
+                
+                // Indicator line on indicator panel
+                if i_show_on_indicator
+                    indicatorLine = line.new(High_Per_Bar3, High_Per_Hist3, High_Last_Bar3, High_Last_Hist3, color=tertiaryBearColor, width=i_line_width, style=getLineStyle())
+                    array.push(bearishIndicatorLines, indicatorLine)
+                
+                // Add label if enabled
+                if Bear_Label
+                    label.new(High_Last_Bar3, High_Last_Hist3, "BearDiv\nTertiary", color=color.new(tertiaryBearColor, 50), textcolor=tertiaryBearColor, style=label.style_label_up, size=size.small)
+                
+                // Manage lines array
+                manageLinesArray(bearishLines)
+                manageLinesArray(bearishIndicatorLines)
+        else
+            // Multi-symbol SMT divergence detection
+            divergenceFound = false
             
-            // Price chart line on main chart
-            if i_show_on_main
-                priceLine = line.new(Low_Per_Bar, low[bar_index - Low_Per_Bar], Low_Last_Bar, low[bar_index - Low_Last_Bar], color=primaryBullColor, width=i_line_width, style=lineStyle, force_overlay=true)
-                array.push(bullishLines, priceLine)
+            // Process Symbol 1 if enabled and correlation is valid
+            if i_enable_sym1 and isCorrelationValid1
+                // Determine colors based on settings
+                symBullColor = i_multi_smt_color_mode == "Symbol-Based" ? (i_mono_mode ? getMonochromeColor(compSymbol1BullishColor, i_mono_bull_brightness) : compSymbol1BullishColor) : getBullishDivergenceColor(1)
+                    
+                symBearColor = i_multi_smt_color_mode == "Symbol-Based" ? (i_mono_mode ? getMonochromeColor(compSymbol1BearishColor, i_mono_bear_brightness) : compSymbol1BearishColor) : getBearishDivergenceColor(1)
+                
+                // Process divergences
+                sym1Found = processMultiSymbolDivergence(getShortSymbolName(Sym1),compSymbol1High, compSymbol1Low, compSymbol1Close, compSymbol1Volume,n, symBullColor, symBearColor, 1)
+                divergenceFound := divergenceFound or sym1Found
+                
+                // Process secondary fractal period if enabled
+                if enableSecondaryFractal
+                    sym1FoundSec = processMultiSymbolDivergence(getShortSymbolName(Sym1) + " (Med)",compSymbol1High, compSymbol1Low, compSymbol1Close, compSymbol1Volume,n2, i_multi_smt_color_mode == "Symbol-Based" ? symBullColor : getBullishDivergenceColor(2),i_multi_smt_color_mode == "Symbol-Based" ? symBearColor : getBearishDivergenceColor(2),1)
+                    
+                    divergenceFound := divergenceFound or sym1FoundSec
+                
+                // Process tertiary fractal period if enabled
+                if enableTertiaryFractal
+                    sym1FoundTert = processMultiSymbolDivergence(getShortSymbolName(Sym1) + " (Long)",compSymbol1High, compSymbol1Low, compSymbol1Close, compSymbol1Volume,n3, i_multi_smt_color_mode == "Symbol-Based" ? symBullColor : getBullishDivergenceColor(3),i_multi_smt_color_mode == "Symbol-Based" ? symBearColor : getBearishDivergenceColor(3),1)
+                    divergenceFound := divergenceFound or sym1FoundTert
             
-            // Indicator line on indicator panel
-            if i_show_on_indicator
-                indicatorLine = line.new(Low_Per_Bar, Low_Per_Hist, Low_Last_Bar, Low_Last_Hist, color=primaryBullColor, width=i_line_width, style=lineStyle)
-                array.push(bullishIndicatorLines, indicatorLine)
+            // Process Symbol 2 if enabled and correlation is valid
+            if i_enable_sym2 and isCorrelationValid2
+                // Determine colors based on settings
+                symBullColor = i_multi_smt_color_mode == "Symbol-Based" ? (i_mono_mode ? getMonochromeColor(compSymbol2BullishColor, i_mono_bull_brightness) : compSymbol2BullishColor) : getBullishDivergenceColor(1)
+                    
+                symBearColor = i_multi_smt_color_mode == "Symbol-Based" ? (i_mono_mode ? getMonochromeColor(compSymbol2BearishColor, i_mono_bear_brightness) : compSymbol2BearishColor) : getBearishDivergenceColor(1)
+                
+                // Process divergences
+                sym2Found = processMultiSymbolDivergence(getShortSymbolName(Sym2),compSymbol2High, compSymbol2Low, compSymbol2Close, compSymbol2Volume,n, symBullColor, symBearColor, 2)
+                divergenceFound := divergenceFound or sym2Found
+                
+                // Process additional fractal periods if enabled
+                if enableSecondaryFractal
+                    sym2FoundSec = processMultiSymbolDivergence(getShortSymbolName(Sym2) + " (Med)",compSymbol2High, compSymbol2Low, compSymbol2Close, compSymbol2Volume,n2,i_multi_smt_color_mode == "Symbol-Based" ? symBullColor : getBullishDivergenceColor(2),i_multi_smt_color_mode == "Symbol-Based" ? symBearColor : getBearishDivergenceColor(2),2)
+                    divergenceFound := divergenceFound or sym2FoundSec
+                
+                if enableTertiaryFractal
+                    sym2FoundTert = processMultiSymbolDivergence(getShortSymbolName(Sym2) + " (Long)",compSymbol2High, compSymbol2Low, compSymbol2Close, compSymbol2Volume,n3,i_multi_smt_color_mode == "Symbol-Based" ? symBullColor : getBullishDivergenceColor(3),i_multi_smt_color_mode == "Symbol-Based" ? symBearColor : getBearishDivergenceColor(3),2)
+                    divergenceFound := divergenceFound or sym2FoundTert
             
-    // Add label if enabled
-            if Bull_Label
-                label.new(Low_Last_Bar, Low_Last_Hist, "BullDiv\nRegular", color=color.new(primaryBullColor, 50), textcolor=primaryBullColor, style=label.style_label_down, size=size.small)
+            // Process Symbol 3 if enabled and correlation is valid
+            if i_enable_sym3 and isCorrelationValid3
+                // Determine colors based on settings
+                symBullColor = i_multi_smt_color_mode == "Symbol-Based" ? (i_mono_mode ? getMonochromeColor(compSymbol3BullishColor, i_mono_bull_brightness) : compSymbol3BullishColor) : getBullishDivergenceColor(1)
+                    
+                symBearColor = i_multi_smt_color_mode == "Symbol-Based" ? (i_mono_mode ? getMonochromeColor(compSymbol3BearishColor, i_mono_bear_brightness) : compSymbol3BearishColor) : getBearishDivergenceColor(1)
+                
+                // Process divergences
+                sym3Found = processMultiSymbolDivergence(getShortSymbolName(Sym3),compSymbol3High, compSymbol3Low, compSymbol3Close, compSymbol3Volume,n, symBullColor, symBearColor, 3)
+                divergenceFound := divergenceFound or sym3Found
+                
+                // Process additional fractal periods if enabled
+                if enableSecondaryFractal
+                    sym3FoundSec = processMultiSymbolDivergence(getShortSymbolName(Sym3) + " (Med)",compSymbol3High, compSymbol3Low, compSymbol3Close, compSymbol3Volume,n2,i_multi_smt_color_mode == "Symbol-Based" ? symBullColor : getBullishDivergenceColor(2),i_multi_smt_color_mode == "Symbol-Based" ? symBearColor : getBearishDivergenceColor(2),3)
+                    divergenceFound := divergenceFound or sym3FoundSec
+                
+                if enableTertiaryFractal
+                    sym3FoundTert = processMultiSymbolDivergence(getShortSymbolName(Sym3) + " (Long)",compSymbol3High, compSymbol3Low, compSymbol3Close, compSymbol3Volume,n3,i_multi_smt_color_mode == "Symbol-Based" ? symBullColor : getBullishDivergenceColor(3),i_multi_smt_color_mode == "Symbol-Based" ? symBearColor : getBearishDivergenceColor(3),3)
+                    divergenceFound := divergenceFound or sym3FoundTert
             
-            // Manage lines array
+            // Manage line arrays
             manageLinesArray(bullishLines)
-            manageLinesArray(bullishIndicatorLines)
-      
-        if Last_Bearish_Divergece and Bear_Line
-            primaryBearColor = getBearishDivergenceColor(1)
-            
-            // Price chart line on main chart
-            if i_show_on_main
-                priceLine = line.new(High_Per_Bar, high[bar_index - High_Per_Bar], High_Last_Bar, high[bar_index - High_Last_Bar], color=primaryBearColor, width=i_line_width, style=lineStyle, force_overlay=true)
-                array.push(bearishLines, priceLine)
-            
-            // Indicator line on indicator panel
-            if i_show_on_indicator
-                indicatorLine = line.new(High_Per_Bar, High_Per_Hist, High_Last_Bar, High_Last_Hist, color=primaryBearColor, width=i_line_width, style=lineStyle)
-                array.push(bearishIndicatorLines, indicatorLine)
-            
-            // Add label if enabled
-            if Bear_Label
-                label.new(High_Last_Bar, High_Last_Hist, "BearDiv\nRegular", color=color.new(primaryBearColor, 50), textcolor=primaryBearColor, style=label.style_label_up, size=size.small)
-            
-            // Manage lines array
             manageLinesArray(bearishLines)
-            manageLinesArray(bearishIndicatorLines)
-    
-        // Secondary Fractal Drawing
-        if Last_Bullish_Divergece2 and Bull_Line
-            secondaryBullColor = getBullishDivergenceColor(2)
-            
-            // Price chart line on main chart
-            if i_show_on_main
-                priceLine = line.new(Low_Per_Bar2, low[bar_index - Low_Per_Bar2], Low_Last_Bar2, low[bar_index - Low_Last_Bar2], color=secondaryBullColor, width=i_line_width, style=lineStyle, force_overlay=true)
-                array.push(bullishLines, priceLine)
-            
-            // Indicator line on indicator panel
-            if i_show_on_indicator
-                indicatorLine = line.new(Low_Per_Bar2, Low_Per_Hist2, Low_Last_Bar2, Low_Last_Hist2, color=secondaryBullColor, width=i_line_width, style=lineStyle)
-                array.push(bullishIndicatorLines, indicatorLine)
-            
-            // Add label if enabled
-            if Bull_Label
-                label.new(Low_Last_Bar2, Low_Last_Hist2, "BullDiv\nSecondary", color=color.new(secondaryBullColor, 50), textcolor=secondaryBullColor, style=label.style_label_down, size=size.small)
-            
-            // Manage lines array
-            manageLinesArray(bullishLines)
             manageLinesArray(bullishIndicatorLines)
-      
-        if Last_Bearish_Divergece2 and Bear_Line
-            secondaryBearColor = getBearishDivergenceColor(2)
-            
-            // Price chart line on main chart
-            if i_show_on_main
-                priceLine = line.new(High_Per_Bar2, high[bar_index - High_Per_Bar2], High_Last_Bar2, high[bar_index - High_Last_Bar2], color=secondaryBearColor, width=i_line_width, style=lineStyle, force_overlay=true)
-                array.push(bearishLines, priceLine)
-            
-            // Indicator line on indicator panel
-            if i_show_on_indicator
-                indicatorLine = line.new(High_Per_Bar2, High_Per_Hist2, High_Last_Bar2, High_Last_Hist2, color=secondaryBearColor, width=i_line_width, style=lineStyle)
-                array.push(bearishIndicatorLines, indicatorLine)
-            
-            // Add label if enabled
-            if Bear_Label
-                label.new(High_Last_Bar2, High_Last_Hist2, "BearDiv\nSecondary", color=color.new(secondaryBearColor, 50), textcolor=secondaryBearColor, style=label.style_label_up, size=size.small)
-            
-            // Manage lines array
-            manageLinesArray(bearishLines)
             manageLinesArray(bearishIndicatorLines)
-    
-        // Tertiary Fractal Drawing
-        if Last_Bullish_Divergece3 and Bull_Line
-            tertiaryBullColor = getBullishDivergenceColor(3)
-            
-            // Price chart line on main chart
-            if i_show_on_main
-                priceLine = line.new(Low_Per_Bar3, low[bar_index - Low_Per_Bar3], Low_Last_Bar3, low[bar_index - Low_Last_Bar3], color=tertiaryBullColor, width=i_line_width, style=lineStyle, force_overlay=true)
-                array.push(bullishLines, priceLine)
-            
-            // Indicator line on indicator panel
-            if i_show_on_indicator
-                indicatorLine = line.new(Low_Per_Bar3, Low_Per_Hist3, Low_Last_Bar3, Low_Last_Hist3, color=tertiaryBullColor, width=i_line_width, style=lineStyle)
-                array.push(bullishIndicatorLines, indicatorLine)
-            
-            // Add label if enabled
-            if Bull_Label
-                label.new(Low_Last_Bar3, Low_Last_Hist3, "BullDiv\nTertiary", color=color.new(tertiaryBullColor, 50), textcolor=tertiaryBullColor, style=label.style_label_down, size=size.small)
-            
-            // Manage lines array
-            manageLinesArray(bullishLines)
-            manageLinesArray(bullishIndicatorLines)
-      
-        if Last_Bearish_Divergece3 and Bear_Line
-            tertiaryBearColor = getBearishDivergenceColor(3)
-            
-            // Price chart line on main chart
-            if i_show_on_main
-                priceLine = line.new(High_Per_Bar3, high[bar_index - High_Per_Bar3], High_Last_Bar3, high[bar_index - High_Last_Bar3], color=tertiaryBearColor, width=i_line_width, style=lineStyle, force_overlay=true)
-                array.push(bearishLines, priceLine)
-            
-            // Indicator line on indicator panel
-            if i_show_on_indicator
-                indicatorLine = line.new(High_Per_Bar3, High_Per_Hist3, High_Last_Bar3, High_Last_Hist3, color=tertiaryBearColor, width=i_line_width, style=lineStyle)
-                array.push(bearishIndicatorLines, indicatorLine)
-            
-            // Add label if enabled
-            if Bear_Label
-                label.new(High_Last_Bar3, High_Last_Hist3, "BearDiv\nTertiary", color=color.new(tertiaryBearColor, 50), textcolor=tertiaryBearColor, style=label.style_label_up, size=size.small)
-            
-            // Manage lines array
-            manageLinesArray(bearishLines)
-            manageLinesArray(bearishIndicatorLines)
+
 
 // ==========================================
 // =========== PLOTTING ====================

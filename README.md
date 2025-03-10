@@ -1,403 +1,526 @@
-# PRECISION CANDLES & SMT DIVERGENCE INDICATOR
-## Comprehensive Market Analysis Toolkit
-
-## 📋 TABLE OF CONTENTS
-
-1. [Philosophical Foundations](#-philosophical-foundations)
-2. [Introduction](#-introduction)
-3. [Technical Philosophy](#-technical-philosophy)
-4. [Market Intelligence Framework](#-market-intelligence-framework)
-5. [Key Features](#-key-features)
-6. [Quick Start Guide](#-quick-start-guide)
-7. [Visual Elements Explained](#-visual-elements-explained)
-8. [Configuration Mastery](#-configuration-mastery)
-9. [Signal Interpretation Principles](#-signal-interpretation-principles)
-10. [Correlation Deep Dive](#-correlation-deep-dive)
-11. [Advanced Trading Strategies](#-advanced-trading-strategies)
-12. [Risk Management](#-risk-management)
-13. [Performance Optimization](#-performance-optimization)
-14. [Known Limitations](#-known-limitations)
-15. [Installation Process](#-how-to-install)
-16. [Continuous Learning](#-continuous-learning)
-17. [FAQs & Troubleshooting](#-faqs--troubleshooting)
+# 📊 PRECISION CANDLES & SMT DIVERGENCE INDICATOR
+## 🌟 Comprehensive User Manual
 
 ---
 
-## 🧭 PHILOSOPHICAL FOUNDATIONS
+## 📋 TABLE OF CONTENTS
 
-### The Art of Market Intelligence
-
-Technical analysis is more than predicting price movements—it's about understanding market dynamics, recognizing patterns, and developing a probabilistic approach to trading.
-
-#### Core Principles
-- **Probabilistic Thinking**: Markets are complex adaptive systems
-- **Contextual Analysis**: Look beyond individual signals
-- **Adaptive Intelligence**: Markets constantly evolve
-- **Risk Management**: Preservation of capital is paramount
-
-> 💡 **FUNDAMENTAL INSIGHT**:
-> No indicator can predict the future with certainty. Success comes from understanding market probabilities and managing risk.
+1. [Introduction](#-introduction)
+2. [Core Features](#-core-features)
+3. [Installation Guide](#-installation-guide)
+4. [Visual Elements Guide](#-visual-elements-guide)
+5. [Quick Start Guide](#-quick-start-guide)
+6. [Configuration Settings](#-configuration-settings)
+7. [Signal Interpretation](#-signal-interpretation)
+8. [Trading Strategies](#-trading-strategies)
+9. [Correlation Analysis](#-correlation-analysis)
+10. [Optimization Tips](#-optimization-tips)
+11. [Troubleshooting](#-troubleshooting)
+12. [Important Warnings](#-important-warnings)
 
 ---
 
 ## 🔍 INTRODUCTION
 
-### Precision Candles & SMT Divergence Indicator: Your Market Analysis Companion
+The **Precision Candles & SMT Divergence Indicator** is an advanced technical analysis tool designed to identify potential market reversals and continuation patterns through two complementary methods:
 
-The Precision Candles & SMT Divergence indicator is an advanced technical analysis tool designed to identify potential reversal and continuation points through two complementary methods:
+1. **PSP (Precision Swing Points)**: Detects when the main chart symbol and comparison symbols move in opposite directions, revealing relative strength and weakness.
 
-1. **PSP (Precision Swing Points)**: 
-   - Detects when the main chart symbol and a comparison symbol move in opposite directions
-   - Will Provide enhanced swing point filtering ( Currently can show swing points )
-   - Reveals relative market strength and momentum
-   - Use in relation to P&D levels.
+2. **SMT Divergence**: Identifies divergences between price action and technical indicators across multiple timeframe levels.
 
-
-
-
-2. **SMT Divergence**: 
-   - Identifies divergences between price action and technical indicators
-   - Analyzes multiple timeframe levels
-   - Highlights potential trend reversals and continuations
-
-> **CRITICAL UNDERSTANDING**: 
-> This is an ANALYTICAL TOOL, not a trading system. It provides insights, not guaranteed signals.
+> ⚠️ **IMPORTANT**:  
+> This is an ANALYTICAL TOOL, not an automated trading system. It provides insights that require interpretation, not guaranteed signals. Always use proper risk management.
 
 ---
 
-## 🧠 TECHNICAL PHILOSOPHY
+## 🚀 CORE FEATURES
 
-### Multi-Dimensional Market Analysis
+### 🎯 Precision Swing Points (PSP)
+- Identifies candles where your chart symbol moves opposite to comparison symbols
+- Color-coded for intuitive recognition of bullish and bearish signals
+- Enhanced swing point filtering with customizable sensitivity
 
-#### Integrated Analysis Approach
-1. **Intermarket Correlation**
-   - Reveals hidden market relationships
-   - Provides broader market context
-
-2. **Multi-Timeframe Perspective**
-   - Analyzes market dynamics across different time horizons
-   - Identifies trend consistency and potential shifts
-
-3. **Probabilistic Signal Generation**
-   - Creates nuanced, multi-layered signal assessment
-   - Reduces binary decision-making risks
-
----
-
-## 🌐 MARKET INTELLIGENCE FRAMEWORK
-
-### Understanding Market Dynamics
-
-#### Market Regime Classification
-
-| Market Regime | Characteristics | Indicator Effectiveness |
-|--------------|-----------------|------------------------|
-| **Trending** | Clear directional move | High reliability |
-| **Consolidating** | Range-bound movement | Medium reliability |
-| **Volatile** | Rapid, unpredictable changes | Low reliability |
-| **Transitioning** | Shifting market structure | Variable reliability |
-
-#### Intelligence Gathering Strategies
-1. Track correlation stability
-2. Monitor divergence signal patterns
-3. Assess PSP signal consistency
-4. Analyze multi-timeframe dynamics
-
----
-
-## 🚀 KEY FEATURES
-
-### Precision Swing Points (PSP)
-- Highlights candles where your chart symbol moves opposite to a comparison symbol
-- Advanced swing point detection with customizable sensitivity
-- Color-coded bullish and bearish PSP identification
-- Configurable border highlighting for easy visual detection
-
-### Enhanced Swing Point Filtering
-- Configurable swing point detection with customizable lookback and threshold
-- Option to display PSP signals only at significant market swing points
-- Adjustable sensitivity for swing point identification
-
-### SMT Divergence Analysis
-- Multi-level fractal analysis (primary, secondary, tertiary)
-- Detects both regular and hidden divergences
+### 📈 SMT Divergence Analysis
+- Multi-level analysis (primary, secondary, tertiary timeframes)
+- Detects both regular (reversal) and hidden (continuation) divergences
 - Strength filtering to reduce false signals
-- Optional volume confirmation
 
-### Intermarket Analysis
+### 🔄 Multi-Symbol Comparison
+- Analyze relationships between up to three correlated symbols
 - Real-time correlation calculation and display
-- Visualizes comparison symbol candles on the indicator pane
-- Automatically adapts analysis to different timeframes
+- Flexible signal generation modes (Any, All, Majority)
 
-### Visual Customization
+### 🎨 Visual Customization
+- Comprehensive color settings for all elements
 - Monochrome mode for reduced visual noise
-- Extensive color customization options
-- Adjustable line styles and transparency levels
+- Adjustable transparency and line styles
+
+---
+
+## 🛠️ INSTALLATION GUIDE
+
+### Step-by-Step Installation
+
+1. **Access TradingView Pine Editor**
+   - Click on "Indicators" in the top toolbar
+   - Select "Pine Editor" from the dropdown menu
+
+2. **Import the Indicator**
+   - Clear the default code in the editor
+   - Paste the Precision Candles & SMT Divergence indicator code
+
+3. **Save the Indicator**
+   - Click "Save" in the Pine Editor
+   - Give it a name (e.g., "Precision Candles & SMT Divergence")
+   - Click "Save" again
+
+4. **Add to Chart**
+   - Click "Add to Chart" to apply the indicator
+   - The indicator will appear on your active chart
+
+5. **Configure Settings**
+   - Right-click on the indicator name on the chart
+   - Select "Settings" to open the configuration panel
+   - Adjust parameters as needed (see Configuration section)
+
+> 💡 **TIP**:  
+> This indicator works best on timeframes of 5 minutes or higher. Lower timeframes may generate excessive signals.
+
+---
+
+## 🎨 VISUAL ELEMENTS GUIDE
+
+### 💹 PSP Signal Indicators
+
+| Visual Element | Description | Meaning | Reliability |
+|----------------|-------------|---------|-------------|
+| 🟢 **Green Border** | Bullish PSP | Main chart is green while comparison is red | ⭐⭐⭐ |
+| 🔴 **Red Border** | Bearish PSP | Main chart is red while comparison is green | ⭐⭐⭐ |
+| 🟩 **Green Zone** | Bullish PSP Zone | Area between body and wick of bullish candle | ⭐⭐⭐ |
+| 🟥 **Red Zone** | Bearish PSP Zone | Area between body and wick of bearish candle | ⭐⭐⭐ |
+| 🔺 **Swing High Marker** | Identified swing high | Potential resistance point | ⭐⭐⭐⭐ |
+| 🔻 **Swing Low Marker** | Identified swing low | Potential support point | ⭐⭐⭐⭐ |
+
+### 📉 Divergence Lines
+
+| Visual Element | Description | Meaning | Reliability |
+|----------------|-------------|---------|-------------|
+| 📗 **Green Line** (Primary) | Bullish Divergence | Price making lower lows while indicator makes higher lows | ⭐⭐⭐⭐ |
+| 📕 **Red Line** (Primary) | Bearish Divergence | Price making higher highs while indicator makes lower highs | ⭐⭐⭐⭐ |
+| 📘 **Blue Line** (Secondary) | Secondary Timeframe Divergence | Longer-term divergence pattern | ⭐⭐⭐ |
+| 📓 **Purple Line** (Tertiary) | Tertiary Timeframe Divergence | Longest-term divergence pattern | ⭐⭐ |
+
+### 📊 Correlation Table
+
+The correlation table displays in the top-right corner of your chart when enabled, showing:
+- Symbol names
+- Correlation values (ranging from -1 to 1)
+- Current signal status (Bullish, Bearish, or -)
+
+> 💡 **TIP**:  
+> Pay close attention to correlation values. Signals are most reliable when correlation is above 0.7 or below -0.7.
 
 ---
 
 ## 🚦 QUICK START GUIDE
 
-### 1. Add the Indicator to Your Chart
-- Search for "Imbalances: Precision Candles & SMT Divergence" in the indicator library
-- Click "Add to Chart"
+### 1️⃣ Basic Setup for Indices
 
-### 2. Configure Comparison Symbol
-- For indices like ES1, try correlated symbols (SPY, QQQ)
-- For stocks, use sector ETFs or major index futures
-- For forex, use related currency pairs or economic indicators
+```
+Symbol: ES1! (S&P 500 Futures)
+Comparison Symbol 1: NQ1! (Nasdaq Futures)
+Minimum Correlation: 0.6
+Signal Generation Mode: Any
+```
 
-### 3. Configure Swing Point Detection
-- Enable "Only Show PSP at Swing Points" for meaningful signals
-- Adjust "Swing Point Lookback" (recommended: 3)
-- Set "Minimum Swing Threshold" based on market volatility
+### 2️⃣ Basic Setup for Stocks
 
-### 4. Select Visualization Options
-- Enable PSP highlighting for entry signals
-- Enable SMT divergence lines for trend signals
-- Set minimum correlation threshold (recommended: 0.5+)
+```
+Symbol: AAPL (Apple Inc.)
+Comparison Symbol 1: QQQ (Nasdaq ETF)
+Minimum Correlation: 0.5
+Signal Generation Mode: Any
+```
 
-### 5. Indicator Reading Guide
-- **Highlighted Candles**: Potential PSP entry signals
-- **Colored Lines**: Divergence patterns across timeframes
-- **Correlation Display**: Symbol relationship insights
+### 3️⃣ Basic Setup for Forex
 
----
+```
+Symbol: EURUSD (Euro/US Dollar)
+Comparison Symbol 1: DXY (US Dollar Index)
+Minimum Correlation: 0.7
+Signal Mode: Any
+```
 
-## 🎨 VISUAL ELEMENTS EXPLAINED
+### 4️⃣ Recommended Initial Settings
 
-### Swing Point Filtered PSP Signals
+```
+- Enable PSP Borders: Yes
+- Show Correlation: Yes
+- Show PSP Zones: Yes
+- Fractal Periods: Primary only (enabled)
+- Divergence Types: Regular only (enabled)
+```
 
-| Element | Description | Reliability |
-|---------|-------------|-------------|
-| **Green Border/Highlight** | Bullish PSP at Significant Swing Point | ⭐⭐⭐⭐ |
-| **Red Border/Highlight** | Bearish PSP at Significant Swing Point | ⭐⭐⭐⭐ |
-
-### PSP Highlighting
-
-| Element | Description | Reliability |
-|---------|-------------|-------------|
-| **Green Border/Highlight** | Bullish PSP (comparison red, main green) | ⭐⭐⭐ |
-| **Red Border/Highlight** | Bearish PSP (comparison green, main red) | ⭐⭐⭐ |
-
-### Divergence Lines
-
-| Element | Description | Reliability |
-|---------|-------------|-------------|
-| **Primary Bullish Divergence** | Green line connecting higher lows | ⭐⭐⭐⭐ |
-| **Primary Bearish Divergence** | Red line connecting lower highs | ⭐⭐⭐⭐ |
-| **Secondary Divergence** | Blue lines (both bullish and bearish) | ⭐⭐⭐ |
-| **Tertiary Divergence** | Purple lines (both bullish and bearish) | ⭐⭐ |
+> 🔍 **EXAMPLE**:  
+> For S&P 500 trading, use ES1! as your main chart with NQ1! as comparison symbol. Look for bullish PSP signals (green borders) at market swing lows, particularly when they align with bullish divergences (green lines).
 
 ---
 
-## ⚙️ CONFIGURATION MASTERY
+## ⚙️ CONFIGURATION SETTINGS
 
-### Swing Point Detection Settings
+### 🌐 General Settings
 
-| Setting | Recommended | Description |
-|---------|-------------|-------------|
-| Swing Point Lookback | 3 | Bars to analyze for swing points |
-| Minimum Swing Threshold (%) | 0.2-1.0 | Percentage difference between swing point and surrounding candles |
+| Setting | Description | Recommended Value | Notes |
+|---------|-------------|-------------------|-------|
+| Show Symbol Correlation | Displays correlation values in a table | ✅ Enabled | Essential for signal validation |
+| Correlation Length | Period for correlation calculation | 20 | Increase for more stability |
+| Minimum Correlation | Threshold for valid signals | 0.5-0.7 | Higher values = fewer but stronger signals |
 
-### Recommended Configuration Strategy
-- Start with conservative settings
-- Gradually refine based on market performance
-- Consider different settings for various market regimes
+### 🔄 Multi-Symbol Comparison
+
+| Setting | Description | Options | Notes |
+|---------|-------------|---------|-------|
+| **Symbols 1-3** | Comparison instruments | Market-dependent | Choose correlated instruments |
+| Signal Generation Mode | How to combine multiple signals | Any/All/Majority | "Any" for more signals, "All" for higher quality |
+| Display Mode | Which symbols to show on chart | Primary Only/All/Active Signal | Start with "Primary Only" to reduce clutter |
+
+> 💡 **TIP**:  
+> For stocks, try sector ETFs as comparison symbols. For indices, other indices or futures work well. For forex, use related currency pairs or economic indicators.
+
+### 📊 Divergence Settings
+
+| Setting | Description | Recommended | Impact |
+|---------|-------------|-------------|--------|
+| Fractal Periods | Timeframe for divergence detection | Primary: 2<br>Secondary: 7<br>Tertiary: 14 | Higher values = fewer but stronger signals |
+| Divergence Types | Which divergences to detect | Regular: ✅<br>Hidden: ⬜ | Enable both for more signals |
+| Minimum Strength | Filter weak divergences | 0-2% | Higher = fewer false signals |
+| Volume Confirmation | Require higher volume at pivots | ⬜ Disabled | Enable for additional confirmation |
+
+> ⚠️ **IMPORTANT**:  
+> Starting with only Primary Fractal enabled is recommended. Add Secondary and Tertiary fractals once you're comfortable with the indicator.
+
+### 🎭 Display Settings
+
+| Setting | Description | Recommended | Notes |
+|---------|-------------|-------------|-------|
+| Monochrome Mode | Uses grayscale for all elements | ⬜ Disabled | Enable to reduce visual complexity |
+| Show Lines on Main Chart | Display divergence lines on price chart | ✅ Enabled | Essential for divergence visualization |
+| Line Style | Visual appearance of divergence lines | Dashed | Makes lines distinct from other indicators |
+| Maximum Lines | Number of divergence lines to display | 10 | Reduce if chart becomes cluttered |
+
+### 📍 PSP Settings
+
+| Setting | Description | Recommended | Impact |
+|---------|-------------|-------------|--------|
+| Highlight Bullish/Bearish PSP | Color coding for PSP signals | Both ✅ Enabled | Core functionality of the indicator |
+| Show PSP Borders | Highlight candle borders for PSP signals | ✅ Enabled | Makes signals easy to spot |
+| Show PSP Zones | Highlight area between body and wick | ✅ Enabled | Visualizes potential entry/exit zones |
+| Zone Extension | How many candles to extend PSP zones | 3 | Higher = more visible but potentially cluttered |
+
+> 💡 **TIP**:  
+> PSP Zones often act as support/resistance areas. Consider placing stop-loss orders just beyond these zones.
+
+### 🔍 Advanced Swing Point Settings
+
+| Setting | Description | Recommended | Notes |
+|---------|-------------|-------------|-------|
+| Swing Point Lookback | Bars to analyze for swing detection | 1-3 | Higher = stronger swing points |
+| Minimum Swing Threshold | Minimum % change for valid swing | 0.1-1.0% | Adjust based on instrument volatility |
+| Check Entire Lookback Window | More thorough swing detection | ✅ Enabled | More accurate but slightly slower |
+| Use ATR Filter | Filter based on volatility | ⬜ Disabled | Enable in volatile markets |
 
 ---
 
-## 🔬 SIGNAL INTERPRETATION PRINCIPLES
+## 🧠 SIGNAL INTERPRETATION
 
-### Understanding PSP Signals
+### 📗 Bullish PSP Signal
 
-#### Bullish PSP Signal
 **Occurs when:**
 - Comparison symbol candle is bearish (red)
 - Main chart symbol candle is bullish (green)
 
-**Indicates:** Relative strength against comparison symbol
+**Indicates:** Relative strength against the comparison symbol
 
-#### Bearish PSP Signal
+**Best used when:**
+- Occurs at a swing low
+- Correlates with bullish divergence
+- Correlation is above minimum threshold
+- During an established uptrend or at potential reversal points
+
+### 📕 Bearish PSP Signal
+
 **Occurs when:**
 - Comparison symbol candle is bullish (green)
 - Main chart symbol candle is bearish (red)
 
-**Indicates:** Relative weakness against comparison symbol
+**Indicates:** Relative weakness against the comparison symbol
 
-### Signal Strength Factors
+**Best used when:**
+- Occurs at a swing high
+- Correlates with bearish divergence
+- Correlation is above minimum threshold
+- During an established downtrend or at potential reversal points
+
+### 📈 Divergence Signal Quality Factors
 
 | Factor | Strong Signal | Weak Signal |
 |--------|---------------|-------------|
-| **Correlation** | Above 0.7 | Below 0.5 |
-| **Candle Size** | Large, decisive | Small, indecisive |
-| **Market Context** | Aligned with trend | Against trend |
-| **Volume** | High volume | Low volume |
+| Price Movement | Clear higher/lower highs/lows | Sideways choppy price action |
+| Indicator Movement | Strong opposite direction to price | Slight opposite direction |
+| Timeframe Alignment | Multiple timeframes show divergence | Only one timeframe shows divergence |
+| Volume | Increasing on pivots | Declining on pivots |
+| Market Context | Occurs near support/resistance | Occurs in no-man's-land |
+
+> 🔍 **EXAMPLE**:  
+> A bullish divergence occurs when price makes a lower low but the indicator makes a higher low. This suggests weakening downward momentum and a potential reversal.
 
 ---
 
-## 🌈 CORRELATION DEEP DIVE
+## 🎲 TRADING STRATEGIES
+
+### 1️⃣ PSP Reversal Strategy
+
+**Setup:**
+1. Identify a strong trend
+2. Wait for a pullback against the trend
+3. Look for PSP signal in the direction of the main trend
+4. Confirm with divergence if possible
+
+**Entry:**
+- Enter at the open of the candle following the PSP signal
+
+**Stop-Loss:**
+- Place stop below/above the PSP signal candle
+
+**Take-Profit:**
+- Target the next significant support/resistance level
+- OR use a risk-reward ratio of at least 1:2
+
+### 2️⃣ Multi-Symbol Consensus Strategy
+
+**Setup:**
+1. Enable 2-3 highly correlated comparison symbols
+2. Set Signal Generation Mode to "All"
+3. Wait for consensus signal (all symbols agree)
+
+**Entry:**
+- Enter at the open of the candle following the consensus signal
+
+**Stop-Loss:**
+- Place stop at recent swing high/low
+
+**Take-Profit:**
+- Use previous swing high/low as target
+- OR implement trailing stop once in profit
+
+### 3️⃣ Divergence Confirmation Strategy
+
+**Setup:**
+1. Identify significant divergence on primary timeframe
+2. Wait for PSP signal in the same direction
+3. Verify correlation is above 0.7
+
+**Entry:**
+- Enter on break of PSP signal candle high/low
+
+**Stop-Loss:**
+- Place stop beyond the divergence pivot point
+
+**Take-Profit:**
+- Target the previous swing high/low
+- OR use measured move (distance of divergence formation)
+
+> ⚠️ **IMPORTANT**:  
+> Always combine this indicator with other forms of analysis. Never trade based solely on these signals.
+
+---
+
+## 🌈 CORRELATION ANALYSIS
 
 ### Understanding Correlation Values
 
-| Correlation | Interpretation | Signal Reliability |
-|-------------|----------------|---------------------|
-| 0.8 to 1.0 | Strong positive | ⭐⭐⭐⭐⭐ |
-| 0.5 to 0.8 | Moderate positive | ⭐⭐⭐⭐ |
-| 0.0 to 0.5 | Weak positive | ⭐⭐ |
-| -0.5 to 0.0 | Weak negative | ⭐⭐ |
-| -0.8 to -0.5 | Moderate negative | ⭐⭐⭐⭐ |
-| -1.0 to -0.8 | Strong negative | ⭐⭐⭐⭐⭐ |
+| Correlation | Interpretation | Signal Quality |
+|-------------|----------------|----------------|
+| 0.8 to 1.0 | Strong positive correlation | Excellent |
+| 0.5 to 0.8 | Moderate positive correlation | Good |
+| 0.0 to 0.5 | Weak positive correlation | Poor |
+| -0.5 to 0.0 | Weak negative correlation | Poor |
+| -0.8 to -0.5 | Moderate negative correlation | Good |
+| -1.0 to -0.8 | Strong negative correlation | Excellent |
 
-### Best Comparison Symbol Pairs
+### Recommended Symbol Pairs
 
-| Main Instrument | Recommended Comparison | Typical Correlation |
-|-----------------|------------------------|---------------------|
-| **Futures** | ES1!, NQ! | 0.8-0.9 |
-| **Financial Stocks** | XLF, KBE | 0.5-0.8 |
-| **EUR/USD** | DXY (inverted) | -0.7 to -0.9 |
-| **Gold** | US Dollar (inverted) | -0.6 to -0.8 |
-| **Oil** | USO, Energy sector ETFs | 0.7-0.9 |
+| Main Instrument | Recommended Comparison | Expected Correlation |
+|-----------------|------------------------|----------------------|
+| ES1! (S&P 500) | NQ1! (Nasdaq) | 0.8-0.9 |
+| SPY (S&P 500 ETF) | QQQ (Nasdaq ETF) | 0.7-0.9 |
+| EURUSD | DXY (inverted) | -0.7 to -0.9 |
+| Gold | US Dollar (inverted) | -0.6 to -0.8 |
+| Bank stocks | XLF (Financial ETF) | 0.6-0.8 |
+| Oil stocks | XLE (Energy ETF) | 0.7-0.9 |
 
----
-
-## 🎲 ADVANCED TRADING STRATEGIES
-
-### 1. PSP Pullback Strategy
-1. Identify strong trend direction
-2. Wait for trend pullback
-3. Look for PSP signal in trend direction
-4. Enter at next candle open
-5. Set stop below/above PSP candle
-6. Target next support/resistance level
-
-### 2. Divergence Confirmation Strategy
-1. Identify primary divergence
-2. Wait for aligned PSP signal
-3. Check correlation strength
-4. Verify volume
-5. Enter with strategic stop placement
-
-### 3. Multi-Timeframe Approach
-1. Analyze higher timeframe (daily/4H)
-2. Identify major divergences
-3. Confirm on lower timeframe
-4. Align PSP signals
-5. Use appropriate stop strategy
+> 💡 **TIP**:  
+> Correlation changes over time. Regularly check the correlation table to ensure your symbol relationships remain strong.
 
 ---
 
-## 🛡️ RISK MANAGEMENT
+## 🔧 OPTIMIZATION TIPS
 
-### Position Sizing Principles
-- Limit risk to 1-2% per trade
-- Use as confirmation tool
-- Implement strict stop-loss mechanisms
+### Performance Optimization
 
-### Signal Validation Framework
-```
-Signal Quality Score = 
-    (Correlation Strength * 0.3) +
-    (Divergence Strength * 0.3) +
-    (PSP Signal Quality * 0.2) +
-    (Volume Confirmation * 0.2)
-```
+1. **Reduce Visual Elements**
+   - Disable additional comparison symbols
+   - Use "Primary Only" display mode
+   - Limit the maximum number of divergence lines
+
+2. **Focus Computation**
+   - Enable only the fractal periods you actually use
+   - Use Primary fractal only for faster charts
+   - Set higher minimum strength to filter weak signals
+
+3. **Display Optimization**
+   - Consider using Monochrome Mode for cleaner visuals
+   - Reduce zone opacity for less visual clutter
+   - Disable labels if not needed
+
+### Parameter Tuning by Timeframe
+
+| Timeframe | Fractal Settings | Lookback | Swing Threshold |
+|-----------|------------------|----------|-----------------|
+| 1-5 min | Primary: 2, Secondary: 5 | 1 | 0.1% |
+| 15-30 min | Primary: 2, Secondary: 7 | 2 | 0.2% |
+| 1-4 hour | Primary: 3, Secondary: 9 | 2-3 | 0.3-0.5% |
+| Daily | Primary: 5, Secondary: 13 | 3 | 0.5-1.0% |
+| Weekly | Primary: 8, Secondary: 21 | 3-5 | 1.0-2.0% |
+
+### Market-Specific Adjustments
+
+| Market Type | Correlation Threshold | Signal Mode | Special Considerations |
+|-------------|----------------------|-------------|------------------------|
+| Trending | 0.5 | Any | Focus on hidden divergences |
+| Ranging | 0.7 | All | Focus on regular divergences |
+| Volatile | 0.8 | All | Increase swing threshold |
+| Low Volatility | 0.6 | Any | Decrease swing threshold |
+
+> 💡 **TIP**:  
+> Backtest your settings during different market conditions. What works in trending markets might not work in ranging markets.
 
 ---
 
-## 🔧 PERFORMANCE OPTIMIZATION
+## ❓ TROUBLESHOOTING
 
-### Computational Efficiency
-- Selectively enable/disable features
-- Adjust fractal calculation complexity
-- Optimize for specific market conditions
+### Common Issues and Solutions
 
-### Configuration Best Practices
-- Start conservative
-- Gradually refine parameters
-- Continuously monitor performance
+| Issue | Possible Cause | Solution |
+|-------|---------------|----------|
+| Too Many Signals | Sensitivity too high | Increase strength filter, use "All" signal mode |
+| Too Few Signals | Sensitivity too low | Decrease strength filter, use "Any" signal mode |
+| Missed Important Moves | Timeframe mismatch | Try different fractal periods, check correlation |
+| Correlation Always Low | Wrong comparison symbol | Select a more correlated instrument |
+| Excessive Visual Clutter | Too many elements enabled | Use monochrome mode, reduce opacity, limit lines |
+| Slow Chart Performance | Excessive calculations | Reduce max bars back, disable tertiary fractals |
+| No Divergences Showing | Strength filter too high | Lower minimum strength, enable both divergence types |
+
+### Checking Signal Quality
+
+**Good PSP Signal Characteristics:**
+- Occurs at significant swing points
+- Has strong correlation (>0.7)
+- Clear candle pattern (decisive move)
+- Alignment with overall trend or at reversal points
+- Confirmed by divergence
+
+**Poor PSP Signal Characteristics:**
+- Occurs in choppy price action
+- Low correlation (<0.5)
+- Small, indecisive candles
+- Contradicts higher timeframe trend
+- No divergence confirmation
+
+> 🔍 **EXAMPLE**:  
+> If you get too many signals in choppy markets, try increasing the minimum correlation to 0.8 and using the "All" signal mode with multiple comparison symbols.
 
 ---
 
-## ⚠️ KNOWN LIMITATIONS
+## ⚠️ IMPORTANT WARNINGS
+
+### Risk Management
+
+1. **Never trade based solely on indicator signals**
+   - Use this indicator as one component of a complete trading system
+   - Always confirm with other forms of analysis
+   - Consider price action, support/resistance, and trend
+
+2. **Position sizing is critical**
+   - Limit risk to 1-2% of account per trade
+   - Don't increase position size based on signal strength
+   - Use a consistent risk management approach
+
+3. **The indicator is not predictive**
+   - It identifies potential opportunities, not guaranteed moves
+   - Past performance does not guarantee future results
+   - Always use stop-loss orders
+
+### Known Limitations
 
 1. **Correlation Dependency**
-   - PSP signals can lose meaning when correlation weakens
-   - Correlations change over market regimes
+   - PSP signals lose meaning when correlation weakens
+   - Correlations change over time and market regimes
+   - Regularly verify correlation strength
 
-2. **Signal Quality**
-   - Simple directional comparison
-   - Potential for excessive signals in choppy markets
+2. **Signal Quality Varies**
+   - Simple direction comparison may generate false signals
+   - Particularly prone to false signals in sideways markets
+   - Performance varies across instruments and timeframes
 
 3. **Divergence Constraints**
-   - Fixed fractal periods
+   - Fixed fractal periods may not adapt to all market conditions
    - No automatic volatility adjustment
+   - Can miss divergences in certain pattern formations
 
-4. **Data Handling**
-   - Potential real-time signal lag
+4. **Data Handling Limitations**
+   - Potential data lag in real-time trading
    - Limited handling of missing data
+   - May have repainting issues in certain configurations
 
-> **CRITICAL WARNING**: 
-> Never trade solely based on these signals. Always use additional confirmation and proper risk management.
-
----
-
-## 🛠️ INSTALLATION PROCESS
-
-1. Download the Pine Script
-2. Open TradingView
-3. Select Pine Editor
-4. Paste the script
-5. Add to Chart
-6. Configure settings carefully
-7. Backtest thoroughly
-
----
-
-## 📚 CONTINUOUS LEARNING
-
-### Growth Strategies
-1. Systematic Backtesting
-2. Market Relationship Study
-3. Analytical Journaling
-4. Adaptive Parameter Optimization
-
-> **MASTER INSIGHT**: 
-> Trading mastery is a journey of continuous learning and adaptation.
-
----
-
-## ❓ FAQs & TROUBLESHOOTING
-
-### Common Questions
-- **Best Comparison Symbol?** Correlated instruments
-- **Regular vs. Hidden Divergence?** Context-dependent
-- **Repainting Concerns?** Minimal with current implementation
-- **Optimal Fractal Periods?** Depends on timeframe
-
-### Troubleshooting Guide
-
-| Issue | Solution |
-|-------|----------|
-| Too Many Signals | Increase strength filter |
-| Too Few Signals | Decrease strength filter |
-| Weak Correlation | Change comparison symbol |
-| Visual Clutter | Use monochrome mode |
-| Performance Issues | Reduce line/fractal calculations |
+> ⚠️ **CRITICAL WARNING**:  
+> This indicator is a tool to assist your analysis, not a replacement for proper trading education, practice, and risk management. Never risk money you cannot afford to lose.
 
 ---
 
 ## 🏆 FINAL BEST PRACTICES
 
-1. Verify correlation
-2. Combine multiple signals
-3. Use multiple timeframes
-4. Apply proper filtering
-5. Adjust to market conditions
-6. Treat as a confirmation tool
-7. Continuous learning
+1. **Start Simple**
+   - Begin with only primary fractal and one comparison symbol
+   - Add complexity gradually as you gain experience
+   - Document settings and results for different markets
+
+2. **Verify Correlation**
+   - Always check correlation before trusting signals
+   - Adapt comparison symbols as market relationships change
+   - Consider inverse correlations for certain pairs
+
+3. **Use Multiple Timeframes**
+   - Check signals across different timeframes for confirmation
+   - Higher timeframe signals generally have higher reliability
+   - Look for alignment across timeframes
+
+4. **Apply Proper Filtering**
+   - Adjust strength filters based on current market volatility
+   - Tune swing point detection to reduce noise
+   - Use ATR filters in highly volatile markets
+
+5. **Treat as Confirmation Tool**
+   - Use as confirmation for other analysis methods
+   - Combine with support/resistance, trend analysis, and patterns
+   - Build a complete trading system around the indicator
+
+6. **Continuous Learning**
+   - Markets evolve and so should your approach
+   - Regularly review performance and adjust settings
+   - Keep journal of trades and indicator performance
 
 ---
 
-*Precision Candles & SMT Divergence Indicator v1.3.x*
+*Precision Candles & SMT Divergence Indicator Manual v1.3.x*
 *Last Updated: March 2025*
